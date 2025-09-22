@@ -15,7 +15,15 @@ from pydantic import Field
 # The log_level is necessary for Cline to work: https://github.com/jlowin/fastmcp/issues/81
 mcp = FastMCP("Interactive Feedback MCP", log_level="ERROR")
 
-def launch_feedback_ui(project_directory: str, summary: str) -> dict[str, str]:
+# Configuration
+AUTO_FEEDBACK_TIMEOUT_SECONDS = int(
+    os.getenv("INTERACTIVE_FEEDBACK_TIMEOUT_SECONDS", "290")
+)
+
+
+def launch_feedback_ui(
+    project_directory: str, summary: str, timeout_seconds: int = 290
+) -> dict[str, str]:
     # Create a temporary file for the feedback result
     with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
         output_file = tmp.name
@@ -32,9 +40,14 @@ def launch_feedback_ui(project_directory: str, summary: str) -> dict[str, str]:
             sys.executable,
             "-u",
             feedback_ui_path,
-            "--project-directory", project_directory,
-            "--prompt", summary,
-            "--output-file", output_file
+            "--project-directory",
+            project_directory,
+            "--prompt",
+            summary,
+            "--output-file",
+            output_file,
+            "--timeout-seconds",
+            str(timeout_seconds),
         ]
         result = subprocess.run(
             args,
@@ -43,13 +56,13 @@ def launch_feedback_ui(project_directory: str, summary: str) -> dict[str, str]:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL,
-            close_fds=True
+            close_fds=True,
         )
         if result.returncode != 0:
             raise Exception(f"Failed to launch feedback UI: {result.returncode}")
 
         # Read the result from the temporary file
-        with open(output_file, 'r') as f:
+        with open(output_file, "r") as f:
             result = json.load(f)
         os.unlink(output_file)
         return result
@@ -58,16 +71,32 @@ def launch_feedback_ui(project_directory: str, summary: str) -> dict[str, str]:
             os.unlink(output_file)
         raise e
 
+
 def first_line(text: str) -> str:
     return text.split("\n")[0].strip()
 
+
 @mcp.tool()
 def interactive_feedback(
-    project_directory: Annotated[str, Field(description="Full path to the project directory")],
-    summary: Annotated[str, Field(description="Short, one-line summary of the changes")],
+    project_directory: Annotated[
+        str, Field(description="Full path to the project directory")
+    ],
+    summary: Annotated[str, Field(description="Brief one-line summary of changes")],
 ) -> Dict[str, str]:
-    """Request interactive feedback for a given project directory and summary"""
-    return launch_feedback_ui(first_line(project_directory), first_line(summary))
+    """Request interactive feedback for the given project directory and summary. This tool opens a window for user input feedback content.
+
+    Users need to call this tool to tell the AI tool the next action direction. You must call this tool to get user feedback until the user feedback is "end conversation" to end the request. Otherwise, you must continue to call this tool to get user feedback.
+
+    Additionally, this tool is also used for multiple calls to continue the conversation and keep the dialogue active.
+
+
+    """
+    return launch_feedback_ui(
+        first_line(project_directory),
+        first_line(summary),
+        AUTO_FEEDBACK_TIMEOUT_SECONDS,
+    )
+
 
 if __name__ == "__main__":
     mcp.run(transport="stdio")

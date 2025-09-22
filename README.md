@@ -1,61 +1,50 @@
 # Interactive Feedback MCP
 
-Developed by Fábio Ferreira ([@fabiomlferreira](https://x.com/fabiomlferreira)).
-Check out [dotcursorrules.com](https://dotcursorrules.com/) for more AI development enhancements.
+fork 自 https://github.com/noopstudios/interactive-feedback-mcp.git
 
-Simple [MCP Server](https://modelcontextprotocol.io/) to enable a human-in-the-loop workflow in AI-assisted development tools like [Cursor](https://www.cursor.com). This server allows you to run commands, view their output, and provide textual feedback directly to the AI. It is also compatible with [Cline](https://cline.bot) and [Windsurf](https://windsurf.com).
+## 🚀 优化和更改
 
-![Interactive Feedback UI - Main View](https://github.com/noopstudios/interactive-feedback-mcp/blob/main/.github/interactive_feedback_1.jpg?raw=true)
-![Interactive Feedback UI - Command Section Open](https://github.com/noopstudios/interactive-feedback-mcp/blob/main/.github/interactive_feedback_2.jpg)
+1. **优化UI样式** - 提升用户界面美观性和用户体验
+2. **新增自动在规定时间内重新调用工具以延续对话** - Cursor等IDE有会话超时时间限制，当超时后在该工具中输入提交后会直接报错，在超时时间内进行自动重新调用可以使会话始终保持活跃，持续等待用户输入新的下一步指令，从而达到一次请求在较长一段时间内仍能完成多次任务的需求
+3. **新增显示当前项目以用于多窗口时的区分** - 便于在多项目同时开发时快速识别当前操作的项目
+4. **支持环境变量配置** - 支持通过环境变量配置自动重新调用时间
 
-## Prompt Engineering
+![优化后的界面示例](images/ex.png)
 
-For the best results, add the following to your custom prompt in your AI assistant, you should add it on a rule or directly in the prompt (e.g., Cursor):
+## 📖 项目简介
 
-> Whenever you want to ask a question, always call the MCP `interactive_feedback`.  
-> Whenever you’re about to complete a user request, call the MCP `interactive_feedback` instead of simply ending the process.
-> Keep calling MCP until the user’s feedback is empty, then end the request.
+这是一个[MCP Server](https://modelcontextprotocol.io/)，用于在AI辅助开发工具中实现人机交互工作流，如[Cursor](https://www.cursor.com)。该服务器允许您运行命令、查看输出，并直接向AI提供文本反馈。也兼容[Cline](https://cline.bot)和[Windsurf](https://windsurf.com)。
 
-This will ensure your AI assistant uses this MCP server to request user feedback before marking the task as completed.
+## 💡 为什么使用这个工具？
 
-## 💡 Why Use This?
-By guiding the assistant to check in with the user instead of branching out into speculative, high-cost tool calls, this module can drastically reduce the number of premium requests (e.g., OpenAI tool invocations) on platforms like Cursor. In some cases, it helps consolidate what would be up to 25 tool calls into a single, feedback-aware request — saving resources and improving performance.
+通过引导AI助手在进行推测性、高成本的工具调用前先与用户确认，这个模块可以大幅减少Cursor等平台上的高级请求次数（例如OpenAI工具调用）。在某些情况下，它可以将原本需要25个工具调用的工作整合为单个反馈感知请求——节省资源并提升性能。
 
-## Configuration
+## 安装说明 (Cursor)
 
-This MCP server uses Qt's `QSettings` to store configuration on a per-project basis. This includes:
-*   The command to run.
-*   Whether to execute the command automatically on the next startup for that project (see "Execute automatically on next run" checkbox).
-*   The visibility state (shown/hidden) of the command section (this is saved immediately when toggled).
-*   Window geometry and state (general UI preferences).
+1. **先决条件：**
+    * Python 3.11 或更新版本
+    * [uv](https://github.com/astral-sh/uv) (Python包管理器)。安装方法：
+        * Windows: `pip install uv`
+        * Linux/Mac: `curl -LsSf https://astral.sh/uv/install.sh | sh`
 
-These settings are typically stored in platform-specific locations (e.g., registry on Windows, plist files on macOS, configuration files in `~/.config` or `~/.local/share` on Linux) under an organization name "FabioFerreira" and application name "InteractiveFeedbackMCP", with a unique group for each project directory.
+2. **获取代码：**
+    * 克隆此仓库：
+        `git clone https://github.com/your-username/interactive-feedback-mcp.git`
+    * 或下载源代码
 
-The "Save Configuration" button in the UI primarily saves the current command typed into the command input field and the state of the "Execute automatically on next run" checkbox for the active project. The visibility of the command section is saved automatically when you toggle it. General window size and position are saved when the application closes.
+3. **进入目录：**
+    * `cd path/to/interactive-feedback-mcp`
 
-## Installation (Cursor)
+4. **安装依赖：**
+    * `uv sync` (这将创建虚拟环境并安装包)
 
-![Instalation on Cursor](https://github.com/noopstudios/interactive-feedback-mcp/blob/main/.github/cursor-example.jpg?raw=true)
+5. **运行MCP服务器：**
+    * `uv run server.py`
 
-1.  **Prerequisites:**
-    *   Python 3.11 or newer.
-    *   [uv](https://github.com/astral-sh/uv) (Python package manager). Install it with:
-        *   Windows: `pip install uv`
-        *   Linux/Mac: `curl -LsSf https://astral.sh/uv/install.sh | sh`
-2.  **Get the code:**
-    *   Clone this repository:
-        `git clone https://github.com/noopstudios/interactive-feedback-mcp.git`
-    *   Or download the source code.
-3.  **Navigate to the directory:**
-    *   `cd path/to/interactive-feedback-mcp`
-4.  **Install dependencies:**
-    *   `uv sync` (this creates a virtual environment and installs packages)
-5.  **Run the MCP Server:**
-    *   `uv run server.py`
-6.  **Configure in Cursor:**
-    *   Cursor typically allows specifying custom MCP servers in its settings. You'll need to point Cursor to this running server. The exact mechanism might vary, so consult Cursor's documentation for adding custom MCPs.
-    *   **Manual Configuration (e.g., via `mcp.json`)**
-        **Remember to change the `/Users/fabioferreira/Dev/scripts/interactive-feedback-mcp` path to the actual path where you cloned the repository on your system.**
+6. **在Cursor中配置：**
+    * Cursor通常允许在其设置中指定自定义MCP服务器。您需要将Cursor指向此正在运行的服务器。具体机制可能有所不同，请查阅Cursor文档了解如何添加自定义MCP。
+    * **手动配置（例如通过`mcp.json`）**
+        **请将`/Users/fabioferreira/Dev/scripts/interactive-feedback-mcp`路径更改为您系统中克隆仓库的实际路径。**
 
         ```json
         {
@@ -64,7 +53,7 @@ The "Save Configuration" button in the UI primarily saves the current command ty
               "command": "uv",
               "args": [
                 "--directory",
-                "/Users/fabioferreira/Dev/scripts/interactive-feedback-mcp",
+                "/Users/your-path/interactive-feedback-mcp",
                 "run",
                 "server.py"
               ],
@@ -76,25 +65,77 @@ The "Save Configuration" button in the UI primarily saves the current command ty
           }
         }
         ```
-    *   You might use a server identifier like `interactive-feedback-mcp` when configuring it in Cursor.
 
-### For Cline / Windsurf
+### 对于 Cline / Windsurf
 
-Similar setup principles apply. You would configure the server command (e.g., `uv run server.py` with the correct `--directory` argument pointing to the project directory) in the respective tool's MCP settings, using `interactive-feedback-mcp` as the server identifier.
+类似设置原则适用。您可以在相应工具的MCP设置中配置服务器命令（例如使用正确`--directory`参数指向项目目录的`uv run server.py`），使用`interactive-feedback-mcp`作为服务器标识符。
 
-## Development
+## 配置
 
-To run the server in development mode with a web interface for testing:
+### 环境变量配置
+
+您可以通过设置环境变量来自定义行为：
+
+* `INTERACTIVE_FEEDBACK_TIMEOUT_SECONDS`: 设置自动反馈的超时时间（秒），默认为290秒（约4分50秒）。这个值控制用户界面显示多长时间后自动提交反馈。
+
+例如，在您的MCP配置文件（如 `~/.cursor/mcp.json` 或其他IDE的MCP配置）中可以这样设置：
+
+```json
+{
+  "mcpServers": {
+    "interactive-feedback-mcp": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/path/to/interactive-feedback-mcp",
+        "run",
+        "server.py"
+      ],
+      "env": {
+        "INTERACTIVE_FEEDBACK_TIMEOUT_SECONDS": "600"
+      },
+      "timeout": 60000,
+      "autoApprove": [
+        "interactive_feedback"
+      ]
+    }
+  }
+}
+```
+
+#### 配置建议
+
+* **快速反馈场景**：设置较短的超时时间，如 `90` 或 `120` 秒，适合简单的确认操作
+* **复杂任务场景**：设置较长的超时时间，如 `600` 或 `900` 秒，给用户更多时间考虑和输入详细反馈
+* **默认值**：如果不设置此环境变量，默认使用 `290` 秒（约4分50秒）(cursor 会话超时时间5分钟)
+
+**注意**：`timeout` 字段（这里设置为60000毫秒）是MCP客户端的超时设置，与自动反馈超时是不同的概念。前者控制整个MCP请求的超时时间，后者控制用户界面的自动反馈时间，用于保持活跃。
+
+### 项目配置
+
+此MCP服务器使用Qt的`QSettings`按项目存储配置。这包括：
+* 要运行的命令
+* 是否在下次启动时为此项目自动执行命令（参见"Execute automatically on next run"复选框）
+* 命令部分的可见性状态（显示/隐藏）（切换时立即保存）
+* 窗口几何和状态（一般UI偏好）
+
+这些设置通常存储在特定于平台的位置（例如Windows上的注册表、macOS上的plist文件、Linux上`~/.config`或`~/.local/share`中的配置文件），组织名称为"FabioFerreira"，应用程序名称为"InteractiveFeedbackMCP"，每个项目目录有唯一的组。
+
+UI中的"Save Configuration"按钮主要保存命令输入字段中输入的当前命令和活动项目的"Execute automatically on next run"复选框状态。命令部分的可见性在切换时自动保存。应用程序关闭时保存一般窗口大小和位置。
+
+## 开发
+
+要在开发模式下运行服务器并带有用于测试的Web界面：
 
 ```sh
 uv run fastmcp dev server.py
 ```
 
-This will open a web interface and allow you to interact with the MCP tools for testing.
+这将打开Web界面并允许您与MCP工具交互进行测试。
 
-## Available tools
+## 可用工具
 
-Here's an example of how the AI assistant would call the `interactive_feedback` tool:
+以下是AI助手如何调用`interactive_feedback`工具的示例：
 
 ```xml
 <use_mcp_tool>
@@ -108,11 +149,3 @@ Here's an example of how the AI assistant would call the `interactive_feedback` 
   </arguments>
 </use_mcp_tool>
 ```
-
-## Acknowledgements & Contact
-
-If you find this Interactive Feedback MCP useful, the best way to show appreciation is by following Fábio Ferreira on [X @fabiomlferreira](https://x.com/fabiomlferreira).
-
-For any questions, suggestions, or if you just want to share how you're using it, feel free to reach out on X!
-
-Also, check out [dotcursorrules.com](https://dotcursorrules.com/) for more resources on enhancing your AI-assisted development workflow.

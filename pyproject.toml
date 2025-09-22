@@ -1,11 +1,11 @@
 [project]
-name = "interactive-feedback-mcp"
+name = "interactive-feedback-mcp-optimized"
 version = "0.1.0"
-description = "MCP server for interactive user feedback and command execution in AI-assisted development, by Fábio Ferreira."
+description = "Optimized version based on noopstudios/interactive-feedback-mcp project, supporting UI style enhancement, automatic session continuation, and multi-project management, by PursueLLL."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "fastmcp>=2.0.0",
-    "psutil>=7.0.0",
-    "pyside6>=6.8.2.1",
+    "fastmcp>=2.12.3",
+    "psutil>=7.1.0",
+    "pyside6>=6.9.2",
 ]

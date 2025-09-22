@@ -1,0 +1,566 @@
+[
+    {
+        "label": "runpy",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "runpy",
+        "description": "runpy",
+        "detail": "runpy",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "os",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "os",
+        "description": "os",
+        "detail": "os",
+        "documentation": {}
+    },
+    {
+        "label": "site",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "site",
+        "description": "site",
+        "detail": "site",
+        "documentation": {}
+    },
+    {
+        "label": "sys",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "sys",
+        "description": "sys",
+        "detail": "sys",
+        "documentation": {}
+    },
+    {
+        "label": "json",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "json",
+        "description": "json",
+        "detail": "json",
+        "documentation": {}
+    },
+    {
+        "label": "psutil",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "psutil",
+        "description": "psutil",
+        "detail": "psutil",
+        "documentation": {}
+    },
+    {
+        "label": "argparse",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "argparse",
+        "description": "argparse",
+        "detail": "argparse",
+        "documentation": {}
+    },
+    {
+        "label": "subprocess",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "subprocess",
+        "description": "subprocess",
+        "detail": "subprocess",
+        "documentation": {}
+    },
+    {
+        "label": "threading",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "threading",
+        "description": "threading",
+        "detail": "threading",
+        "documentation": {}
+    },
+    {
+        "label": "hashlib",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "hashlib",
+        "description": "hashlib",
+        "detail": "hashlib",
+        "documentation": {}
+    },
+    {
+        "label": "Optional",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "TypedDict",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Annotated",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Dict",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "QApplication",
+        "importPath": "PySide6.QtWidgets",
+        "description": "PySide6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PySide6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QMainWindow",
+        "importPath": "PySide6.QtWidgets",
+        "description": "PySide6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PySide6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QWidget",
+        "importPath": "PySide6.QtWidgets",
+        "description": "PySide6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PySide6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QVBoxLayout",
+        "importPath": "PySide6.QtWidgets",
+        "description": "PySide6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PySide6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QHBoxLayout",
+        "importPath": "PySide6.QtWidgets",
+        "description": "PySide6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PySide6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QLabel",
+        "importPath": "PySide6.QtWidgets",
+        "description": "PySide6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PySide6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QLineEdit",
+        "importPath": "PySide6.QtWidgets",
+        "description": "PySide6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PySide6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QPushButton",
+        "importPath": "PySide6.QtWidgets",
+        "description": "PySide6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PySide6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QCheckBox",
+        "importPath": "PySide6.QtWidgets",
+        "description": "PySide6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PySide6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QTextEdit",
+        "importPath": "PySide6.QtWidgets",
+        "description": "PySide6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PySide6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QGroupBox",
+        "importPath": "PySide6.QtWidgets",
+        "description": "PySide6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PySide6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "Qt",
+        "importPath": "PySide6.QtCore",
+        "description": "PySide6.QtCore",
+        "isExtraImport": true,
+        "detail": "PySide6.QtCore",
+        "documentation": {}
+    },
+    {
+        "label": "Signal",
+        "importPath": "PySide6.QtCore",
+        "description": "PySide6.QtCore",
+        "isExtraImport": true,
+        "detail": "PySide6.QtCore",
+        "documentation": {}
+    },
+    {
+        "label": "QObject",
+        "importPath": "PySide6.QtCore",
+        "description": "PySide6.QtCore",
+        "isExtraImport": true,
+        "detail": "PySide6.QtCore",
+        "documentation": {}
+    },
+    {
+        "label": "QTimer",
+        "importPath": "PySide6.QtCore",
+        "description": "PySide6.QtCore",
+        "isExtraImport": true,
+        "detail": "PySide6.QtCore",
+        "documentation": {}
+    },
+    {
+        "label": "QSettings",
+        "importPath": "PySide6.QtCore",
+        "description": "PySide6.QtCore",
+        "isExtraImport": true,
+        "detail": "PySide6.QtCore",
+        "documentation": {}
+    },
+    {
+        "label": "QTextCursor",
+        "importPath": "PySide6.QtGui",
+        "description": "PySide6.QtGui",
+        "isExtraImport": true,
+        "detail": "PySide6.QtGui",
+        "documentation": {}
+    },
+    {
+        "label": "QIcon",
+        "importPath": "PySide6.QtGui",
+        "description": "PySide6.QtGui",
+        "isExtraImport": true,
+        "detail": "PySide6.QtGui",
+        "documentation": {}
+    },
+    {
+        "label": "QKeyEvent",
+        "importPath": "PySide6.QtGui",
+        "description": "PySide6.QtGui",
+        "isExtraImport": true,
+        "detail": "PySide6.QtGui",
+        "documentation": {}
+    },
+    {
+        "label": "QFont",
+        "importPath": "PySide6.QtGui",
+        "description": "PySide6.QtGui",
+        "isExtraImport": true,
+        "detail": "PySide6.QtGui",
+        "documentation": {}
+    },
+    {
+        "label": "QFontDatabase",
+        "importPath": "PySide6.QtGui",
+        "description": "PySide6.QtGui",
+        "isExtraImport": true,
+        "detail": "PySide6.QtGui",
+        "documentation": {}
+    },
+    {
+        "label": "QPalette",
+        "importPath": "PySide6.QtGui",
+        "description": "PySide6.QtGui",
+        "isExtraImport": true,
+        "detail": "PySide6.QtGui",
+        "documentation": {}
+    },
+    {
+        "label": "QColor",
+        "importPath": "PySide6.QtGui",
+        "description": "PySide6.QtGui",
+        "isExtraImport": true,
+        "detail": "PySide6.QtGui",
+        "documentation": {}
+    },
+    {
+        "label": "tempfile",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "tempfile",
+        "description": "tempfile",
+        "detail": "tempfile",
+        "documentation": {}
+    },
+    {
+        "label": "FastMCP",
+        "importPath": "fastmcp",
+        "description": "fastmcp",
+        "isExtraImport": true,
+        "detail": "fastmcp",
+        "documentation": {}
+    },
+    {
+        "label": "Field",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "bin_dir",
+        "kind": 5,
+        "importPath": ".venv.bin.activate_this",
+        "description": ".venv.bin.activate_this",
+        "peekOfCode": "bin_dir = os.path.dirname(abs_file)\nbase = bin_dir[: -len(\"bin\") - 1]  # strip away the bin part from the __file__, plus the path separator\n# prepend bin to PATH (this file is inside the bin directory)\nos.environ[\"PATH\"] = os.pathsep.join([bin_dir, *os.environ.get(\"PATH\", \"\").split(os.pathsep)])\nos.environ[\"VIRTUAL_ENV\"] = base  # virtual env is right above bin directory\nos.environ[\"VIRTUAL_ENV_PROMPT\"] = \"interactive-feedback-mcp\" or os.path.basename(base)  # noqa: SIM222\n# add the virtual environments libraries to the host python import mechanism\nprev_length = len(sys.path)\nfor lib in \"../lib/python3.11/site-packages\".split(os.pathsep):\n    path = os.path.realpath(os.path.join(bin_dir, lib))",
+        "detail": ".venv.bin.activate_this",
+        "documentation": {}
+    },
+    {
+        "label": "base",
+        "kind": 5,
+        "importPath": ".venv.bin.activate_this",
+        "description": ".venv.bin.activate_this",
+        "peekOfCode": "base = bin_dir[: -len(\"bin\") - 1]  # strip away the bin part from the __file__, plus the path separator\n# prepend bin to PATH (this file is inside the bin directory)\nos.environ[\"PATH\"] = os.pathsep.join([bin_dir, *os.environ.get(\"PATH\", \"\").split(os.pathsep)])\nos.environ[\"VIRTUAL_ENV\"] = base  # virtual env is right above bin directory\nos.environ[\"VIRTUAL_ENV_PROMPT\"] = \"interactive-feedback-mcp\" or os.path.basename(base)  # noqa: SIM222\n# add the virtual environments libraries to the host python import mechanism\nprev_length = len(sys.path)\nfor lib in \"../lib/python3.11/site-packages\".split(os.pathsep):\n    path = os.path.realpath(os.path.join(bin_dir, lib))\n    site.addsitedir(path)",
+        "detail": ".venv.bin.activate_this",
+        "documentation": {}
+    },
+    {
+        "label": "os.environ[\"PATH\"]",
+        "kind": 5,
+        "importPath": ".venv.bin.activate_this",
+        "description": ".venv.bin.activate_this",
+        "peekOfCode": "os.environ[\"PATH\"] = os.pathsep.join([bin_dir, *os.environ.get(\"PATH\", \"\").split(os.pathsep)])\nos.environ[\"VIRTUAL_ENV\"] = base  # virtual env is right above bin directory\nos.environ[\"VIRTUAL_ENV_PROMPT\"] = \"interactive-feedback-mcp\" or os.path.basename(base)  # noqa: SIM222\n# add the virtual environments libraries to the host python import mechanism\nprev_length = len(sys.path)\nfor lib in \"../lib/python3.11/site-packages\".split(os.pathsep):\n    path = os.path.realpath(os.path.join(bin_dir, lib))\n    site.addsitedir(path)\nsys.path[:] = sys.path[prev_length:] + sys.path[0:prev_length]\nsys.real_prefix = sys.prefix",
+        "detail": ".venv.bin.activate_this",
+        "documentation": {}
+    },
+    {
+        "label": "os.environ[\"VIRTUAL_ENV\"]",
+        "kind": 5,
+        "importPath": ".venv.bin.activate_this",
+        "description": ".venv.bin.activate_this",
+        "peekOfCode": "os.environ[\"VIRTUAL_ENV\"] = base  # virtual env is right above bin directory\nos.environ[\"VIRTUAL_ENV_PROMPT\"] = \"interactive-feedback-mcp\" or os.path.basename(base)  # noqa: SIM222\n# add the virtual environments libraries to the host python import mechanism\nprev_length = len(sys.path)\nfor lib in \"../lib/python3.11/site-packages\".split(os.pathsep):\n    path = os.path.realpath(os.path.join(bin_dir, lib))\n    site.addsitedir(path)\nsys.path[:] = sys.path[prev_length:] + sys.path[0:prev_length]\nsys.real_prefix = sys.prefix\nsys.prefix = base",
+        "detail": ".venv.bin.activate_this",
+        "documentation": {}
+    },
+    {
+        "label": "os.environ[\"VIRTUAL_ENV_PROMPT\"]",
+        "kind": 5,
+        "importPath": ".venv.bin.activate_this",
+        "description": ".venv.bin.activate_this",
+        "peekOfCode": "os.environ[\"VIRTUAL_ENV_PROMPT\"] = \"interactive-feedback-mcp\" or os.path.basename(base)  # noqa: SIM222\n# add the virtual environments libraries to the host python import mechanism\nprev_length = len(sys.path)\nfor lib in \"../lib/python3.11/site-packages\".split(os.pathsep):\n    path = os.path.realpath(os.path.join(bin_dir, lib))\n    site.addsitedir(path)\nsys.path[:] = sys.path[prev_length:] + sys.path[0:prev_length]\nsys.real_prefix = sys.prefix\nsys.prefix = base",
+        "detail": ".venv.bin.activate_this",
+        "documentation": {}
+    },
+    {
+        "label": "prev_length",
+        "kind": 5,
+        "importPath": ".venv.bin.activate_this",
+        "description": ".venv.bin.activate_this",
+        "peekOfCode": "prev_length = len(sys.path)\nfor lib in \"../lib/python3.11/site-packages\".split(os.pathsep):\n    path = os.path.realpath(os.path.join(bin_dir, lib))\n    site.addsitedir(path)\nsys.path[:] = sys.path[prev_length:] + sys.path[0:prev_length]\nsys.real_prefix = sys.prefix\nsys.prefix = base",
+        "detail": ".venv.bin.activate_this",
+        "documentation": {}
+    },
+    {
+        "label": "sys.path[:]",
+        "kind": 5,
+        "importPath": ".venv.bin.activate_this",
+        "description": ".venv.bin.activate_this",
+        "peekOfCode": "sys.path[:] = sys.path[prev_length:] + sys.path[0:prev_length]\nsys.real_prefix = sys.prefix\nsys.prefix = base",
+        "detail": ".venv.bin.activate_this",
+        "documentation": {}
+    },
+    {
+        "label": "sys.real_prefix",
+        "kind": 5,
+        "importPath": ".venv.bin.activate_this",
+        "description": ".venv.bin.activate_this",
+        "peekOfCode": "sys.real_prefix = sys.prefix\nsys.prefix = base",
+        "detail": ".venv.bin.activate_this",
+        "documentation": {}
+    },
+    {
+        "label": "sys.prefix",
+        "kind": 5,
+        "importPath": ".venv.bin.activate_this",
+        "description": ".venv.bin.activate_this",
+        "peekOfCode": "sys.prefix = base",
+        "detail": ".venv.bin.activate_this",
+        "documentation": {}
+    },
+    {
+        "label": "FeedbackResult",
+        "kind": 6,
+        "importPath": "feedback_ui",
+        "description": "feedback_ui",
+        "peekOfCode": "class FeedbackResult(TypedDict):\n    command_logs: str\n    interactive_feedback: str\nclass FeedbackConfig(TypedDict):\n    run_command: str\n    execute_automatically: bool\ndef set_dark_title_bar(widget: QWidget, dark_title_bar: bool) -> None:\n    # Ensure we're on Windows\n    if sys.platform != \"win32\":\n        return",
+        "detail": "feedback_ui",
+        "documentation": {}
+    },
+    {
+        "label": "FeedbackConfig",
+        "kind": 6,
+        "importPath": "feedback_ui",
+        "description": "feedback_ui",
+        "peekOfCode": "class FeedbackConfig(TypedDict):\n    run_command: str\n    execute_automatically: bool\ndef set_dark_title_bar(widget: QWidget, dark_title_bar: bool) -> None:\n    # Ensure we're on Windows\n    if sys.platform != \"win32\":\n        return\n    from ctypes import windll, c_uint32, byref\n    # Get Windows build number\n    build_number = sys.getwindowsversion().build",
+        "detail": "feedback_ui",
+        "documentation": {}
+    },
+    {
+        "label": "FeedbackTextEdit",
+        "kind": 6,
+        "importPath": "feedback_ui",
+        "description": "feedback_ui",
+        "peekOfCode": "class FeedbackTextEdit(QTextEdit):\n    def __init__(self, parent=None):\n        super().__init__(parent)\n    def keyPressEvent(self, event: QKeyEvent):\n        if event.key() == Qt.Key_Return and event.modifiers() == Qt.ControlModifier:\n            # Find the parent FeedbackUI instance and call submit\n            parent = self.parent()\n            while parent and not isinstance(parent, FeedbackUI):\n                parent = parent.parent()\n            if parent:",
+        "detail": "feedback_ui",
+        "documentation": {}
+    },
+    {
+        "label": "LogSignals",
+        "kind": 6,
+        "importPath": "feedback_ui",
+        "description": "feedback_ui",
+        "peekOfCode": "class LogSignals(QObject):\n    append_log = Signal(str)\nclass FeedbackUI(QMainWindow):\n    def __init__(self, project_directory: str, prompt: str, timeout_seconds: int = 290):\n        super().__init__()\n        self.project_directory = project_directory\n        self.prompt = prompt\n        self.timeout_seconds = timeout_seconds\n        self.process: Optional[subprocess.Popen] = None\n        self.log_buffer = []",
+        "detail": "feedback_ui",
+        "documentation": {}
+    },
+    {
+        "label": "FeedbackUI",
+        "kind": 6,
+        "importPath": "feedback_ui",
+        "description": "feedback_ui",
+        "peekOfCode": "class FeedbackUI(QMainWindow):\n    def __init__(self, project_directory: str, prompt: str, timeout_seconds: int = 290):\n        super().__init__()\n        self.project_directory = project_directory\n        self.prompt = prompt\n        self.timeout_seconds = timeout_seconds\n        self.process: Optional[subprocess.Popen] = None\n        self.log_buffer = []\n        self.feedback_result = None\n        self.log_signals = LogSignals()",
+        "detail": "feedback_ui",
+        "documentation": {}
+    },
+    {
+        "label": "set_dark_title_bar",
+        "kind": 2,
+        "importPath": "feedback_ui",
+        "description": "feedback_ui",
+        "peekOfCode": "def set_dark_title_bar(widget: QWidget, dark_title_bar: bool) -> None:\n    # Ensure we're on Windows\n    if sys.platform != \"win32\":\n        return\n    from ctypes import windll, c_uint32, byref\n    # Get Windows build number\n    build_number = sys.getwindowsversion().build\n    if build_number < 17763:  # Windows 10 1809 minimum\n        return\n    # Check if the widget's property already matches the setting",
+        "detail": "feedback_ui",
+        "documentation": {}
+    },
+    {
+        "label": "get_dark_mode_palette",
+        "kind": 2,
+        "importPath": "feedback_ui",
+        "description": "feedback_ui",
+        "peekOfCode": "def get_dark_mode_palette(app: QApplication):\n    darkPalette = app.palette()\n    # Elegant dark theme - minimal and sophisticated\n    darkPalette.setColor(QPalette.Window, QColor(18, 18, 18))  # Deep charcoal\n    darkPalette.setColor(QPalette.WindowText, QColor(224, 224, 224))  # Soft white\n    darkPalette.setColor(QPalette.Disabled, QPalette.WindowText, QColor(128, 128, 128))\n    darkPalette.setColor(QPalette.Base, QColor(24, 24, 24))  # Slightly lighter charcoal\n    darkPalette.setColor(QPalette.AlternateBase, QColor(32, 32, 32))\n    darkPalette.setColor(QPalette.ToolTipBase, QColor(18, 18, 18))\n    darkPalette.setColor(QPalette.ToolTipText, QColor(224, 224, 224))",
+        "detail": "feedback_ui",
+        "documentation": {}
+    },
+    {
+        "label": "kill_tree",
+        "kind": 2,
+        "importPath": "feedback_ui",
+        "description": "feedback_ui",
+        "peekOfCode": "def kill_tree(process: subprocess.Popen):\n    killed: list[psutil.Process] = []\n    parent = psutil.Process(process.pid)\n    for proc in parent.children(recursive=True):\n        try:\n            proc.kill()\n            killed.append(proc)\n        except psutil.Error:\n            pass\n    try:",
+        "detail": "feedback_ui",
+        "documentation": {}
+    },
+    {
+        "label": "get_user_environment",
+        "kind": 2,
+        "importPath": "feedback_ui",
+        "description": "feedback_ui",
+        "peekOfCode": "def get_user_environment() -> dict[str, str]:\n    if sys.platform != \"win32\":\n        return os.environ.copy()\n    import ctypes\n    from ctypes import wintypes\n    # Load required DLLs\n    advapi32 = ctypes.WinDLL(\"advapi32\")\n    userenv = ctypes.WinDLL(\"userenv\")\n    kernel32 = ctypes.WinDLL(\"kernel32\")\n    # Constants",
+        "detail": "feedback_ui",
+        "documentation": {}
+    },
+    {
+        "label": "get_project_settings_group",
+        "kind": 2,
+        "importPath": "feedback_ui",
+        "description": "feedback_ui",
+        "peekOfCode": "def get_project_settings_group(project_dir: str) -> str:\n    # Create a safe, unique group name from the project directory path\n    # Using only the last component + hash of full path to keep it somewhat readable but unique\n    basename = os.path.basename(os.path.normpath(project_dir))\n    full_hash = hashlib.md5(project_dir.encode(\"utf-8\")).hexdigest()[:8]\n    return f\"{basename}_{full_hash}\"\ndef feedback_ui(\n    project_directory: str,\n    prompt: str,\n    output_file: Optional[str] = None,",
+        "detail": "feedback_ui",
+        "documentation": {}
+    },
+    {
+        "label": "feedback_ui",
+        "kind": 2,
+        "importPath": "feedback_ui",
+        "description": "feedback_ui",
+        "peekOfCode": "def feedback_ui(\n    project_directory: str,\n    prompt: str,\n    output_file: Optional[str] = None,\n    timeout_seconds: int = 290,\n) -> Optional[FeedbackResult]:\n    app = QApplication.instance() or QApplication()\n    app.setPalette(get_dark_mode_palette(app))\n    app.setStyle(\"Fusion\")\n    ui = FeedbackUI(project_directory, prompt, timeout_seconds)",
+        "detail": "feedback_ui",
+        "documentation": {}
+    },
+    {
+        "label": "launch_feedback_ui",
+        "kind": 2,
+        "importPath": "server",
+        "description": "server",
+        "peekOfCode": "def launch_feedback_ui(\n    project_directory: str, summary: str, timeout_seconds: int = 290\n) -> dict[str, str]:\n    # Create a temporary file for the feedback result\n    with tempfile.NamedTemporaryFile(suffix=\".json\", delete=False) as tmp:\n        output_file = tmp.name\n    try:\n        # Get the path to feedback_ui.py relative to this script\n        script_dir = os.path.dirname(os.path.abspath(__file__))\n        feedback_ui_path = os.path.join(script_dir, \"feedback_ui.py\")",
+        "detail": "server",
+        "documentation": {}
+    },
+    {
+        "label": "first_line",
+        "kind": 2,
+        "importPath": "server",
+        "description": "server",
+        "peekOfCode": "def first_line(text: str) -> str:\n    return text.split(\"\\n\")[0].strip()\n@mcp.tool()\ndef interactive_feedback(\n    project_directory: Annotated[\n        str, Field(description=\"Full path to the project directory\")\n    ],\n    summary: Annotated[str, Field(description=\"Brief one-line summary of changes\")],\n) -> Dict[str, str]:\n    \"\"\"Request interactive feedback for the given project directory and summary. This tool opens a window for user input feedback content.",
+        "detail": "server",
+        "documentation": {}
+    },
+    {
+        "label": "interactive_feedback",
+        "kind": 2,
+        "importPath": "server",
+        "description": "server",
+        "peekOfCode": "def interactive_feedback(\n    project_directory: Annotated[\n        str, Field(description=\"Full path to the project directory\")\n    ],\n    summary: Annotated[str, Field(description=\"Brief one-line summary of changes\")],\n) -> Dict[str, str]:\n    \"\"\"Request interactive feedback for the given project directory and summary. This tool opens a window for user input feedback content.\n    Users need to call this tool to tell the AI tool the next action direction. You must call this tool to get user feedback until the user feedback is \"end conversation\" to end the request. Otherwise, you must continue to call this tool to get user feedback.\n    Additionally, this tool is also used for multiple calls to continue the conversation and keep the dialogue active.\n    \"\"\"",
+        "detail": "server",
+        "documentation": {}
+    },
+    {
+        "label": "mcp",
+        "kind": 5,
+        "importPath": "server",
+        "description": "server",
+        "peekOfCode": "mcp = FastMCP(\"Interactive Feedback MCP\", log_level=\"ERROR\")\n# Configuration\nAUTO_FEEDBACK_TIMEOUT_SECONDS = int(\n    os.getenv(\"INTERACTIVE_FEEDBACK_TIMEOUT_SECONDS\", \"290\")\n)\ndef launch_feedback_ui(\n    project_directory: str, summary: str, timeout_seconds: int = 290\n) -> dict[str, str]:\n    # Create a temporary file for the feedback result\n    with tempfile.NamedTemporaryFile(suffix=\".json\", delete=False) as tmp:",
+        "detail": "server",
+        "documentation": {}
+    },
+    {
+        "label": "AUTO_FEEDBACK_TIMEOUT_SECONDS",
+        "kind": 5,
+        "importPath": "server",
+        "description": "server",
+        "peekOfCode": "AUTO_FEEDBACK_TIMEOUT_SECONDS = int(\n    os.getenv(\"INTERACTIVE_FEEDBACK_TIMEOUT_SECONDS\", \"290\")\n)\ndef launch_feedback_ui(\n    project_directory: str, summary: str, timeout_seconds: int = 290\n) -> dict[str, str]:\n    # Create a temporary file for the feedback result\n    with tempfile.NamedTemporaryFile(suffix=\".json\", delete=False) as tmp:\n        output_file = tmp.name\n    try:",
+        "detail": "server",
+        "documentation": {}
+    }
+]
