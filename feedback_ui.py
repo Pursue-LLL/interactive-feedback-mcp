@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QCheckBox,
     QTextEdit,
+    QPlainTextEdit,
     QGroupBox,
 )
 from PySide6.QtCore import Qt, Signal, QObject, QTimer, QSettings
@@ -37,15 +38,20 @@ from PySide6.QtGui import (
 
 # Auto feedback timeout configuration (now configurable via command line)
 
+# Confirmation instructions for plan review workflow
+CONFIRMATION_INSTRUCTIONS = """
+
+请先输出你经过思考后的执行计划和方案，然后调用interactive_feedback工具拉起反馈窗口来询问用户对该方案是否满意，等待用户在反馈窗口输入肯定的指令后再执行该方案，如果用户不同意该方案请思考其他方案后再次请求用户确认。"""
+
 
 class FeedbackResult(TypedDict):
-    command_logs: str
     interactive_feedback: str
 
 
 class FeedbackConfig(TypedDict):
     run_command: str
     execute_automatically: bool
+    confirm_before_execute: bool
 
 
 def set_dark_title_bar(widget: QWidget, dark_title_bar: bool) -> None:
@@ -299,12 +305,15 @@ class FeedbackUI(QMainWindow):
             self.restoreState(state)
         self.settings.endGroup()  # End "MainWindow_General" group
 
-        # Load project-specific settings (command, auto-execute, command section visibility)
+        # Load project-specific settings (command, auto-execute, command section visibility, confirm before execute)
         self.project_group_name = get_project_settings_group(self.project_directory)
         self.settings.beginGroup(self.project_group_name)
         loaded_run_command = self.settings.value("run_command", "", type=str)
         loaded_execute_auto = self.settings.value(
             "execute_automatically", False, type=bool
+        )
+        loaded_confirm_before_execute = self.settings.value(
+            "confirm_before_execute", False, type=bool
         )
         command_section_visible = self.settings.value(
             "commandSectionVisible", False, type=bool
@@ -312,8 +321,9 @@ class FeedbackUI(QMainWindow):
         self.settings.endGroup()  # End project-specific group
 
         self.config: FeedbackConfig = {
-            "run_command": loaded_run_command,
-            "execute_automatically": loaded_execute_auto,
+            "run_command": loaded_run_command or "",
+            "execute_automatically": loaded_execute_auto or False,
+            "confirm_before_execute": loaded_confirm_before_execute or False,
         }
 
         self._create_ui()  # self.config is used here to set initial values
@@ -519,8 +529,6 @@ class FeedbackUI(QMainWindow):
                 border: 1px solid #007bff;
             }
         """)
-        self.auto_check.setChecked(self.config.get("execute_automatically", False))
-        self.auto_check.stateChanged.connect(self._update_config)
 
         save_button = QPushButton("💾 保存配置")
         save_button.setStyleSheet("""
@@ -548,20 +556,20 @@ class FeedbackUI(QMainWindow):
         auto_layout.addWidget(save_button)
         command_layout.addLayout(auto_layout)
 
-        # Console section (now part of command_group) - Light terminal style
+        # Console section (now part of command_group) - Dark terminal style
         console_group = QGroupBox("📜 控制台输出")
         console_group.setStyleSheet("""
             QGroupBox {
                 font-size: 14px;
                 font-weight: 600;
-                border: 1px solid #dee2e6;
+                border: 1px solid #404040;
                 border-radius: 8px;
                 margin-top: 8px;
                 padding-top: 16px;
-                background-color: #f8f9fa;
+                background-color: #1e1e1e;
             }
             QGroupBox::title {
-                color: #495057;
+                color: #c0c0c0;
                 font-size: 13px;
                 font-weight: 600;
                 padding: 2px 8px;
@@ -688,17 +696,23 @@ class FeedbackUI(QMainWindow):
 
         feedback_layout.addLayout(header_layout)
 
-        # Short description label - Compact style with gray background
-        self.description_label = QLabel(self.prompt)
-        self.description_label.setWordWrap(True)
+        # Short description text edit - Selectable and copyable with gray background
+        self.description_label = QPlainTextEdit(self.prompt)
+        self.description_label.setReadOnly(True)
+        self.description_label.setMaximumHeight(80)  # Limit height for compact display
         self.description_label.setStyleSheet("""
-            QLabel {
+            QPlainTextEdit {
                 color: #c0c0c0;
                 font-size: 13px;
                 line-height: 1.4;
                 padding: 8px 12px;
                 background-color: #404040;
                 border-radius: 6px;
+                border: none;
+                selection-background-color: #606060;
+            }
+            QPlainTextEdit:focus {
+                border: 1px solid #606060;
             }
         """)
         feedback_layout.addWidget(self.description_label)
@@ -707,13 +721,13 @@ class FeedbackUI(QMainWindow):
         self.feedback_text = FeedbackTextEdit()
         font_metrics = self.feedback_text.fontMetrics()
         row_height = font_metrics.height()
-        # Calculate height for 8 lines to give more space for input
+        # Calculate height for 3 lines to give compact input area
         padding = (
             self.feedback_text.contentsMargins().top()
             + self.feedback_text.contentsMargins().bottom()
             + 10
         )
-        self.feedback_text.setMinimumHeight(8 * row_height + padding)
+        self.feedback_text.setMinimumHeight(3 * row_height + padding)
         self.feedback_text.setStyleSheet("""
             QTextEdit {
                 background-color: #252525;
@@ -765,7 +779,32 @@ class FeedbackUI(QMainWindow):
         """)
         submit_button.clicked.connect(self._submit_feedback)
 
+        # Confirmation checkbox - Clean dark style
+        self.confirm_before_execute_check = QCheckBox("🔍 需要先确认方案后再执行")
+        self.confirm_before_execute_check.setStyleSheet("""
+            QCheckBox {
+                color: #a0a0a0;
+                font-size: 12px;
+                spacing: 8px;
+            }
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+                border: 1px solid #606060;
+                border-radius: 3px;
+                background-color: #252525;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #007bff;
+                border: 1px solid #007bff;
+            }
+            QCheckBox::indicator:hover {
+                border: 1px solid #007bff;
+            }
+        """)
+
         feedback_layout.addWidget(self.feedback_text)
+        feedback_layout.addWidget(self.confirm_before_execute_check)
         feedback_layout.addWidget(submit_button)
 
         # Set minimum height for feedback_group to accommodate its contents
@@ -783,32 +822,7 @@ class FeedbackUI(QMainWindow):
         # Add widgets in a specific order
         layout.addWidget(self.feedback_group)
 
-        # Credits/Contact Label - Dark footer
-        contact_label = QLabel(
-            '需要改进？联系 Fábio Ferreira <a href="https://x.com/fabiomlferreira">𝕏 (Twitter)</a> 或访问 <a href="https://dotcursorrules.com/">dotcursorrules.com</a>'
-        )
-        contact_label.setOpenExternalLinks(True)
-        contact_label.setAlignment(Qt.AlignCenter)
-        contact_label.setStyleSheet("""
-            QLabel {
-                font-size: 11px;
-                color: #808080;
-                padding: 12px 20px;
-                background-color: #1a1a1a;
-                border-radius: 6px;
-                margin-top: 8px;
-            }
-            QLabel a {
-                color: #a0a0a0;
-                text-decoration: none;
-                font-weight: 500;
-            }
-            QLabel a:hover {
-                color: #c0c0c0;
-                text-decoration: underline;
-            }
-        """)
-        layout.addWidget(contact_label)
+        self.command_group.setVisible(False)
 
     def _toggle_command_section(self):
         is_visible = self.command_group.isVisible()
@@ -825,25 +839,43 @@ class FeedbackUI(QMainWindow):
 
         # Adjust window height only
         new_height = self.centralWidget().sizeHint().height()
+        command_group_layout = self.command_group.layout()
         if (
             self.command_group.isVisible()
-            and self.command_group.layout().sizeHint().height() > 0
+            and command_group_layout
+            and command_group_layout.sizeHint().height() > 0
         ):
             # if command group became visible and has content, ensure enough height
             min_content_height = (
-                self.command_group.layout().sizeHint().height()
+                command_group_layout.sizeHint().height()
                 + self.feedback_group.minimumHeight()
                 + self.toggle_command_button.height()
-                + self.centralWidget().layout().spacing() * 2
+                + (
+                    self.centralWidget().layout().spacing()
+                    if self.centralWidget().layout()
+                    else 0
+                )
+                * 2
             )
             new_height = max(new_height, min_content_height)
 
         current_width = self.width()
         self.resize(current_width, new_height)
 
+        # Set initial states for checkboxes after all UI elements are created
+        self.auto_check.setChecked(self.config.get("execute_automatically", False))
+        self.confirm_before_execute_check.setChecked(
+            self.config.get("confirm_before_execute", False)
+        )
+        self.auto_check.stateChanged.connect(self._update_config)
+        self.confirm_before_execute_check.stateChanged.connect(self._update_config)
+
     def _update_config(self):
         self.config["run_command"] = self.command_entry.text()
         self.config["execute_automatically"] = self.auto_check.isChecked()
+        self.config["confirm_before_execute"] = (
+            self.confirm_before_execute_check.isChecked()
+        )
 
     def _append_log(self, text: str):
         self.log_buffer.append(text)
@@ -922,10 +954,20 @@ class FeedbackUI(QMainWindow):
             self.auto_feedback_timer.stop()
         if self.countdown_timer.isActive():
             self.countdown_timer.stop()
-        self.feedback_result = FeedbackResult(
-            command_logs="".join(self.log_buffer),
-            interactive_feedback=self.feedback_text.toPlainText().strip(),
-        )
+
+        user_input = self.feedback_text.toPlainText().strip()
+
+        # Check if confirm_before_execute is enabled
+        if self.confirm_before_execute_check.isChecked():
+            # Add confirmation instructions to user input
+            modified_input = user_input + CONFIRMATION_INSTRUCTIONS
+
+            # Set the modified input as the feedback result
+            self.feedback_result = FeedbackResult(interactive_feedback=modified_input)
+        else:
+            # Normal submission without confirmation
+            self.feedback_result = FeedbackResult(interactive_feedback=user_input)
+
         self.close()
 
     def clear_logs(self):
@@ -933,11 +975,14 @@ class FeedbackUI(QMainWindow):
         self.log_text.clear()
 
     def _save_config(self):
-        # Save run_command and execute_automatically to QSettings under project group
+        # Save run_command, execute_automatically, and confirm_before_execute to QSettings under project group
         self.settings.beginGroup(self.project_group_name)
         self.settings.setValue("run_command", self.config["run_command"])
         self.settings.setValue(
             "execute_automatically", self.config["execute_automatically"]
+        )
+        self.settings.setValue(
+            "confirm_before_execute", self.config["confirm_before_execute"]
         )
         self.settings.endGroup()
         self._append_log("Configuration saved for this project.\n")
@@ -948,6 +993,10 @@ class FeedbackUI(QMainWindow):
             self.auto_feedback_timer.stop()
         if self.countdown_timer.isActive():
             self.countdown_timer.stop()
+
+        # 当用户主动关闭窗口时，设置反馈结果为"会话可以结束了"
+        if not self.feedback_result:
+            self.feedback_result = FeedbackResult(interactive_feedback="会话可以结束了")
 
         # Save general UI settings for the main window (geometry, state)
         self.settings.beginGroup("MainWindow_General")
@@ -977,9 +1026,7 @@ class FeedbackUI(QMainWindow):
             kill_tree(self.process)
 
         if not self.feedback_result:
-            return FeedbackResult(
-                command_logs="".join(self.log_buffer), interactive_feedback=""
-            )
+            return FeedbackResult(interactive_feedback="")
 
         return self.feedback_result
 
@@ -997,12 +1044,13 @@ def feedback_ui(
     prompt: str,
     output_file: Optional[str] = None,
     timeout_seconds: int = 290,
-) -> Optional[FeedbackResult]:
+) -> tuple[Optional[FeedbackResult], str]:
     app = QApplication.instance() or QApplication()
     app.setPalette(get_dark_mode_palette(app))
     app.setStyle("Fusion")
     ui = FeedbackUI(project_directory, prompt, timeout_seconds)
     result = ui.run()
+    logs = "".join(ui.log_buffer)
 
     if output_file and result:
         # Ensure the directory exists
@@ -1013,9 +1061,9 @@ def feedback_ui(
         # Save the result to the output file
         with open(output_file, "w") as f:
             json.dump(result, f)
-        return None
+        return None, logs
 
-    return result
+    return result, logs
 
 
 if __name__ == "__main__":
@@ -1041,10 +1089,11 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    result = feedback_ui(
+    result, logs = feedback_ui(
         args.project_directory, args.prompt, args.output_file, args.timeout_seconds
     )
+    if logs:
+        print(f"\nLogs collected: \n{logs}")
     if result:
-        print(f"\nLogs collected: \n{result['command_logs']}")
         print(f"\nFeedback received:\n{result['interactive_feedback']}")
     sys.exit(0)
