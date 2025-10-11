@@ -251,17 +251,34 @@ class FeedbackTextEdit(QTextEdit):
         else:
             super().keyPressEvent(event)
 
+    def insertFromMimeData(self, source):
+        # Override to strip formatting when pasting
+        if source.hasText():
+            # Insert only plain text, stripping all formatting
+            plain_text = source.text()
+            self.insertPlainText(plain_text)
+        else:
+            # For non-text data, use default behavior
+            super().insertFromMimeData(source)
+
 
 class LogSignals(QObject):
     append_log = Signal(str)
 
 
 class FeedbackUI(QMainWindow):
-    def __init__(self, project_directory: str, prompt: str, timeout_seconds: int = 290):
+    def __init__(
+        self,
+        project_directory: str,
+        prompt: str,
+        task_id: str,
+        timeout_seconds: int = 290,
+    ):
         super().__init__()
         self.project_directory = project_directory
         self.prompt = prompt
         self.timeout_seconds = timeout_seconds
+        self.task_id = task_id
 
         self.process: Optional[subprocess.Popen] = None
         self.log_buffer = []
@@ -680,6 +697,23 @@ class FeedbackUI(QMainWindow):
         """)
         header_layout.addWidget(project_path_label)
 
+        # Task ID label - Only show if task_id is provided
+        if self.task_id:
+            task_id_label = QLabel(f"📋 {self.task_id}")
+            task_id_label.setStyleSheet("""
+                QLabel {
+                    color: #a0d8ff;
+                    font-size: 12px;
+                    font-weight: 500;
+                    padding: 4px 8px;
+                    background-color: #2a4a6b;
+                    border-radius: 4px;
+                }
+            """)
+            header_layout.addWidget(task_id_label)
+
+        header_layout.addStretch()
+
         # Countdown display label - Compact style
         self.countdown_label = QLabel(f"⏰ {self.timeout_seconds}秒")
         self.countdown_label.setStyleSheet("""
@@ -691,12 +725,11 @@ class FeedbackUI(QMainWindow):
                 border-radius: 4px;
             }
         """)
-        header_layout.addStretch()
         header_layout.addWidget(self.countdown_label)
 
         feedback_layout.addLayout(header_layout)
 
-        # Short description text edit - Selectable and copyable with gray background
+        # Short description text edit - Simple styling
         self.description_label = QPlainTextEdit(self.prompt)
         self.description_label.setReadOnly(True)
         self.description_label.setMaximumHeight(80)  # Limit height for compact display
@@ -957,16 +990,22 @@ class FeedbackUI(QMainWindow):
 
         user_input = self.feedback_text.toPlainText().strip()
 
+        # Add additional instruction text to user input
+        additional_text = "\n 请回答以上问题或要求。\n并且注意，除非我主动让你结束，否则不要结束对话，必须回复。回复或反思优化步骤完成后必须重新调用interactive_feedback工具拉起反馈窗口来询问我的反馈，因为反馈窗口仅对当前轮次对话有效，旧的窗口已无效，所以每一轮新对话必须重新调用，只有这样才能保证会话连续性，如果你本轮仅仅回复了内容但是没有调用interactive_feedback工具询问我的反馈，那么对话将会终止，任务将会失败！所以决不允许只回复内容不调用工具询问反馈，直接在回复中询问是无效的，用户看不到，所以必须重新调用工具在反馈窗口中询问反馈！"
+        user_input_with_suffix = user_input + additional_text
+
         # Check if confirm_before_execute is enabled
         if self.confirm_before_execute_check.isChecked():
             # Add confirmation instructions to user input
-            modified_input = user_input + CONFIRMATION_INSTRUCTIONS
+            modified_input = user_input_with_suffix + CONFIRMATION_INSTRUCTIONS
 
             # Set the modified input as the feedback result
             self.feedback_result = FeedbackResult(interactive_feedback=modified_input)
         else:
             # Normal submission without confirmation
-            self.feedback_result = FeedbackResult(interactive_feedback=user_input)
+            self.feedback_result = FeedbackResult(
+                interactive_feedback=user_input_with_suffix
+            )
 
         self.close()
 
@@ -996,7 +1035,7 @@ class FeedbackUI(QMainWindow):
 
         # 当用户主动关闭窗口时，设置反馈结果为"会话可以结束了"
         if not self.feedback_result:
-            self.feedback_result = FeedbackResult(interactive_feedback="会话可以结束了")
+            self.feedback_result = FeedbackResult(interactive_feedback="请结束会话！")
 
         # Save general UI settings for the main window (geometry, state)
         self.settings.beginGroup("MainWindow_General")
@@ -1042,13 +1081,14 @@ def get_project_settings_group(project_dir: str) -> str:
 def feedback_ui(
     project_directory: str,
     prompt: str,
+    task_id: str,
     output_file: Optional[str] = None,
     timeout_seconds: int = 290,
 ) -> tuple[Optional[FeedbackResult], str]:
     app = QApplication.instance() or QApplication()
     app.setPalette(get_dark_mode_palette(app))
     app.setStyle("Fusion")
-    ui = FeedbackUI(project_directory, prompt, timeout_seconds)
+    ui = FeedbackUI(project_directory, prompt, task_id, timeout_seconds)
     result = ui.run()
     logs = "".join(ui.log_buffer)
 
@@ -1087,10 +1127,19 @@ if __name__ == "__main__":
         default=290,
         help="Timeout in seconds for auto-feedback (default: 290)",
     )
+    parser.add_argument(
+        "--task-id",
+        required=True,
+        help="Task identifier to distinguish different tasks (required)",
+    )
     args = parser.parse_args()
 
     result, logs = feedback_ui(
-        args.project_directory, args.prompt, args.output_file, args.timeout_seconds
+        args.project_directory,
+        args.prompt,
+        args.task_id,
+        args.output_file,
+        args.timeout_seconds,
     )
     if logs:
         print(f"\nLogs collected: \n{logs}")

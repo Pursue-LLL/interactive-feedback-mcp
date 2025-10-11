@@ -210,6 +210,14 @@
         "documentation": {}
     },
     {
+        "label": "QPlainTextEdit",
+        "importPath": "PySide6.QtWidgets",
+        "description": "PySide6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PySide6.QtWidgets",
+        "documentation": {}
+    },
+    {
         "label": "QGroupBox",
         "importPath": "PySide6.QtWidgets",
         "description": "PySide6.QtWidgets",
@@ -424,7 +432,7 @@
         "kind": 6,
         "importPath": "feedback_ui",
         "description": "feedback_ui",
-        "peekOfCode": "class FeedbackResult(TypedDict):\n    command_logs: str\n    interactive_feedback: str\nclass FeedbackConfig(TypedDict):\n    run_command: str\n    execute_automatically: bool\ndef set_dark_title_bar(widget: QWidget, dark_title_bar: bool) -> None:\n    # Ensure we're on Windows\n    if sys.platform != \"win32\":\n        return",
+        "peekOfCode": "class FeedbackResult(TypedDict):\n    interactive_feedback: str\nclass FeedbackConfig(TypedDict):\n    run_command: str\n    execute_automatically: bool\n    confirm_before_execute: bool\ndef set_dark_title_bar(widget: QWidget, dark_title_bar: bool) -> None:\n    # Ensure we're on Windows\n    if sys.platform != \"win32\":\n        return",
         "detail": "feedback_ui",
         "documentation": {}
     },
@@ -433,7 +441,7 @@
         "kind": 6,
         "importPath": "feedback_ui",
         "description": "feedback_ui",
-        "peekOfCode": "class FeedbackConfig(TypedDict):\n    run_command: str\n    execute_automatically: bool\ndef set_dark_title_bar(widget: QWidget, dark_title_bar: bool) -> None:\n    # Ensure we're on Windows\n    if sys.platform != \"win32\":\n        return\n    from ctypes import windll, c_uint32, byref\n    # Get Windows build number\n    build_number = sys.getwindowsversion().build",
+        "peekOfCode": "class FeedbackConfig(TypedDict):\n    run_command: str\n    execute_automatically: bool\n    confirm_before_execute: bool\ndef set_dark_title_bar(widget: QWidget, dark_title_bar: bool) -> None:\n    # Ensure we're on Windows\n    if sys.platform != \"win32\":\n        return\n    from ctypes import windll, c_uint32, byref\n    # Get Windows build number",
         "detail": "feedback_ui",
         "documentation": {}
     },
@@ -451,7 +459,7 @@
         "kind": 6,
         "importPath": "feedback_ui",
         "description": "feedback_ui",
-        "peekOfCode": "class LogSignals(QObject):\n    append_log = Signal(str)\nclass FeedbackUI(QMainWindow):\n    def __init__(self, project_directory: str, prompt: str, timeout_seconds: int = 290):\n        super().__init__()\n        self.project_directory = project_directory\n        self.prompt = prompt\n        self.timeout_seconds = timeout_seconds\n        self.process: Optional[subprocess.Popen] = None\n        self.log_buffer = []",
+        "peekOfCode": "class LogSignals(QObject):\n    append_log = Signal(str)\nclass FeedbackUI(QMainWindow):\n    def __init__(\n        self,\n        project_directory: str,\n        prompt: str,\n        task_id: str,\n        timeout_seconds: int = 290,\n    ):",
         "detail": "feedback_ui",
         "documentation": {}
     },
@@ -460,7 +468,7 @@
         "kind": 6,
         "importPath": "feedback_ui",
         "description": "feedback_ui",
-        "peekOfCode": "class FeedbackUI(QMainWindow):\n    def __init__(self, project_directory: str, prompt: str, timeout_seconds: int = 290):\n        super().__init__()\n        self.project_directory = project_directory\n        self.prompt = prompt\n        self.timeout_seconds = timeout_seconds\n        self.process: Optional[subprocess.Popen] = None\n        self.log_buffer = []\n        self.feedback_result = None\n        self.log_signals = LogSignals()",
+        "peekOfCode": "class FeedbackUI(QMainWindow):\n    def __init__(\n        self,\n        project_directory: str,\n        prompt: str,\n        task_id: str,\n        timeout_seconds: int = 290,\n    ):\n        super().__init__()\n        self.project_directory = project_directory",
         "detail": "feedback_ui",
         "documentation": {}
     },
@@ -505,7 +513,7 @@
         "kind": 2,
         "importPath": "feedback_ui",
         "description": "feedback_ui",
-        "peekOfCode": "def get_project_settings_group(project_dir: str) -> str:\n    # Create a safe, unique group name from the project directory path\n    # Using only the last component + hash of full path to keep it somewhat readable but unique\n    basename = os.path.basename(os.path.normpath(project_dir))\n    full_hash = hashlib.md5(project_dir.encode(\"utf-8\")).hexdigest()[:8]\n    return f\"{basename}_{full_hash}\"\ndef feedback_ui(\n    project_directory: str,\n    prompt: str,\n    output_file: Optional[str] = None,",
+        "peekOfCode": "def get_project_settings_group(project_dir: str) -> str:\n    # Create a safe, unique group name from the project directory path\n    # Using only the last component + hash of full path to keep it somewhat readable but unique\n    basename = os.path.basename(os.path.normpath(project_dir))\n    full_hash = hashlib.md5(project_dir.encode(\"utf-8\")).hexdigest()[:8]\n    return f\"{basename}_{full_hash}\"\ndef feedback_ui(\n    project_directory: str,\n    prompt: str,\n    task_id: str,",
         "detail": "feedback_ui",
         "documentation": {}
     },
@@ -514,7 +522,16 @@
         "kind": 2,
         "importPath": "feedback_ui",
         "description": "feedback_ui",
-        "peekOfCode": "def feedback_ui(\n    project_directory: str,\n    prompt: str,\n    output_file: Optional[str] = None,\n    timeout_seconds: int = 290,\n) -> Optional[FeedbackResult]:\n    app = QApplication.instance() or QApplication()\n    app.setPalette(get_dark_mode_palette(app))\n    app.setStyle(\"Fusion\")\n    ui = FeedbackUI(project_directory, prompt, timeout_seconds)",
+        "peekOfCode": "def feedback_ui(\n    project_directory: str,\n    prompt: str,\n    task_id: str,\n    output_file: Optional[str] = None,\n    timeout_seconds: int = 290,\n) -> tuple[Optional[FeedbackResult], str]:\n    app = QApplication.instance() or QApplication()\n    app.setPalette(get_dark_mode_palette(app))\n    app.setStyle(\"Fusion\")",
+        "detail": "feedback_ui",
+        "documentation": {}
+    },
+    {
+        "label": "CONFIRMATION_INSTRUCTIONS",
+        "kind": 5,
+        "importPath": "feedback_ui",
+        "description": "feedback_ui",
+        "peekOfCode": "CONFIRMATION_INSTRUCTIONS = \"\"\"\n请先输出你经过思考后的执行计划和方案，然后调用interactive_feedback工具拉起反馈窗口来询问用户对该方案是否满意，等待用户在反馈窗口输入肯定的指令后再执行该方案，如果用户不同意该方案请思考其他方案后再次请求用户确认。\"\"\"\nclass FeedbackResult(TypedDict):\n    interactive_feedback: str\nclass FeedbackConfig(TypedDict):\n    run_command: str\n    execute_automatically: bool\n    confirm_before_execute: bool\ndef set_dark_title_bar(widget: QWidget, dark_title_bar: bool) -> None:\n    # Ensure we're on Windows",
         "detail": "feedback_ui",
         "documentation": {}
     },
@@ -523,7 +540,7 @@
         "kind": 2,
         "importPath": "server",
         "description": "server",
-        "peekOfCode": "def launch_feedback_ui(\n    project_directory: str, summary: str, timeout_seconds: int = 290\n) -> dict[str, str]:\n    # Create a temporary file for the feedback result\n    with tempfile.NamedTemporaryFile(suffix=\".json\", delete=False) as tmp:\n        output_file = tmp.name\n    try:\n        # Get the path to feedback_ui.py relative to this script\n        script_dir = os.path.dirname(os.path.abspath(__file__))\n        feedback_ui_path = os.path.join(script_dir, \"feedback_ui.py\")",
+        "peekOfCode": "def launch_feedback_ui(\n    project_directory: str, summary: str, task_id: str, timeout_seconds: int = 290\n) -> dict[str, str]:\n    # Create a temporary file for the feedback result\n    with tempfile.NamedTemporaryFile(suffix=\".json\", delete=False) as tmp:\n        output_file = tmp.name\n    try:\n        # Get the absolute path to feedback_ui.py\n        script_dir = os.path.dirname(os.path.abspath(__file__))\n        feedback_ui_path = os.path.abspath(os.path.join(script_dir, \"feedback_ui.py\"))",
         "detail": "server",
         "documentation": {}
     },
@@ -532,7 +549,7 @@
         "kind": 2,
         "importPath": "server",
         "description": "server",
-        "peekOfCode": "def first_line(text: str) -> str:\n    return text.split(\"\\n\")[0].strip()\n@mcp.tool()\ndef interactive_feedback(\n    project_directory: Annotated[\n        str, Field(description=\"Full path to the project directory\")\n    ],\n    summary: Annotated[str, Field(description=\"Brief one-line summary of changes\")],\n) -> Dict[str, str]:\n    \"\"\"Request interactive feedback for the given project directory and summary. This tool opens a window for user input feedback content.",
+        "peekOfCode": "def first_line(text: str) -> str:\n    return text.split(\"\\n\")[0].strip()\n@mcp.tool()\ndef interactive_feedback(\n    project_directory: Annotated[\n        str, Field(description=\"Full path to the project directory\")\n    ],\n    summary: Annotated[\n        str,\n        Field(",
         "detail": "server",
         "documentation": {}
     },
@@ -541,7 +558,7 @@
         "kind": 2,
         "importPath": "server",
         "description": "server",
-        "peekOfCode": "def interactive_feedback(\n    project_directory: Annotated[\n        str, Field(description=\"Full path to the project directory\")\n    ],\n    summary: Annotated[str, Field(description=\"Brief one-line summary of changes\")],\n) -> Dict[str, str]:\n    \"\"\"Request interactive feedback for the given project directory and summary. This tool opens a window for user input feedback content.\n    Users need to call this tool to tell the AI tool the next action direction. You must call this tool to get user feedback until the user feedback is \"end conversation\" to end the request. Otherwise, you must continue to call this tool to get user feedback.\n    Additionally, this tool is also used for multiple calls to continue the conversation and keep the dialogue active.\n    \"\"\"",
+        "peekOfCode": "def interactive_feedback(\n    project_directory: Annotated[\n        str, Field(description=\"Full path to the project directory\")\n    ],\n    summary: Annotated[\n        str,\n        Field(\n            description=\"Brief one-line summary of changes or question to ask the user\"\n        ),\n    ],",
         "detail": "server",
         "documentation": {}
     },
@@ -550,7 +567,7 @@
         "kind": 5,
         "importPath": "server",
         "description": "server",
-        "peekOfCode": "mcp = FastMCP(\"Interactive Feedback MCP\", log_level=\"ERROR\")\n# Configuration\nAUTO_FEEDBACK_TIMEOUT_SECONDS = int(\n    os.getenv(\"INTERACTIVE_FEEDBACK_TIMEOUT_SECONDS\", \"290\")\n)\ndef launch_feedback_ui(\n    project_directory: str, summary: str, timeout_seconds: int = 290\n) -> dict[str, str]:\n    # Create a temporary file for the feedback result\n    with tempfile.NamedTemporaryFile(suffix=\".json\", delete=False) as tmp:",
+        "peekOfCode": "mcp = FastMCP(\"Interactive Feedback MCP\", log_level=\"ERROR\")\n# Configuration\nAUTO_FEEDBACK_TIMEOUT_SECONDS = int(\n    os.getenv(\"INTERACTIVE_FEEDBACK_TIMEOUT_SECONDS\", \"290\")\n)\ndef launch_feedback_ui(\n    project_directory: str, summary: str, task_id: str, timeout_seconds: int = 290\n) -> dict[str, str]:\n    # Create a temporary file for the feedback result\n    with tempfile.NamedTemporaryFile(suffix=\".json\", delete=False) as tmp:",
         "detail": "server",
         "documentation": {}
     },
@@ -559,7 +576,7 @@
         "kind": 5,
         "importPath": "server",
         "description": "server",
-        "peekOfCode": "AUTO_FEEDBACK_TIMEOUT_SECONDS = int(\n    os.getenv(\"INTERACTIVE_FEEDBACK_TIMEOUT_SECONDS\", \"290\")\n)\ndef launch_feedback_ui(\n    project_directory: str, summary: str, timeout_seconds: int = 290\n) -> dict[str, str]:\n    # Create a temporary file for the feedback result\n    with tempfile.NamedTemporaryFile(suffix=\".json\", delete=False) as tmp:\n        output_file = tmp.name\n    try:",
+        "peekOfCode": "AUTO_FEEDBACK_TIMEOUT_SECONDS = int(\n    os.getenv(\"INTERACTIVE_FEEDBACK_TIMEOUT_SECONDS\", \"290\")\n)\ndef launch_feedback_ui(\n    project_directory: str, summary: str, task_id: str, timeout_seconds: int = 290\n) -> dict[str, str]:\n    # Create a temporary file for the feedback result\n    with tempfile.NamedTemporaryFile(suffix=\".json\", delete=False) as tmp:\n        output_file = tmp.name\n    try:",
         "detail": "server",
         "documentation": {}
     }
