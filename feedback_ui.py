@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
     QTextEdit,
     QPlainTextEdit,
     QGroupBox,
+    QSizePolicy,
 )
 from PySide6.QtCore import Qt, Signal, QObject, QTimer, QSettings
 from PySide6.QtGui import (
@@ -365,6 +366,47 @@ class FeedbackUI(QMainWindow):
         else:
             self.countdown_label.setText("⏰ 重新询问中...")
             self.countdown_timer.stop()
+
+    def _adjust_description_height(self):
+        """Adjust description label height based on content length"""
+        if not hasattr(self, 'description_label') or not self.description_label:
+            return
+
+        # Get text content
+        text = self.description_label.toPlainText()
+        if not text.strip():
+            self.description_label.setFixedHeight(80)
+            return
+
+        # Calculate lines (rough estimation)
+        font_metrics = self.description_label.fontMetrics()
+        line_height = font_metrics.lineSpacing()
+
+        # Use estimated width since actual width may not be available during initialization
+        # Assume typical width for the widget area (accounting for margins and other UI elements)
+        estimated_width = 700  # Rough estimate based on window width minus margins
+        text_width = estimated_width - 40  # Account for padding and margins
+
+        # Count actual lines by splitting and measuring
+        lines = text.split('\n')
+        total_lines = 0
+        for line in lines:
+            if not line.strip():
+                total_lines += 1
+            else:
+                # Estimate wrapped lines
+                line_width = font_metrics.horizontalAdvance(line)
+                if line_width <= text_width:
+                    total_lines += 1
+                else:
+                    wrapped_lines = (line_width // text_width) + 1
+                    total_lines += wrapped_lines
+
+        # Calculate target height with padding
+        content_height = total_lines * line_height + 24  # Add padding for top/bottom margins
+        target_height = min(200, max(80, content_height))
+
+        self.description_label.setFixedHeight(target_height)
 
     def _auto_submit_feedback(self):
         """Auto submit feedback with default message after timeout"""
@@ -732,7 +774,8 @@ class FeedbackUI(QMainWindow):
         # Short description text edit - Simple styling
         self.description_label = QPlainTextEdit(self.prompt)
         self.description_label.setReadOnly(True)
-        self.description_label.setMaximumHeight(80)  # Limit height for compact display
+        # Set fixed height for short content, expandable for longer content
+        self._adjust_description_height()
         self.description_label.setStyleSheet("""
             QPlainTextEdit {
                 color: #c0c0c0;
@@ -1054,6 +1097,8 @@ class FeedbackUI(QMainWindow):
 
     def run(self) -> FeedbackResult:
         self.show()
+        # Adjust description height after window is shown and has proper dimensions
+        QTimer.singleShot(100, self._adjust_description_height)
         # Start both timers after showing the window
         self.auto_feedback_timer.start(
             self.timeout_seconds * 1000
