@@ -4,6 +4,7 @@
 import os
 import sys
 import json
+import asyncio
 import tempfile
 import subprocess
 
@@ -12,21 +13,56 @@ from typing import Annotated, Dict
 from fastmcp import FastMCP
 from pydantic import Field
 
+# Version identifier for debugging
+SERVER_VERSION = "v0.1.2-cancel-fix"
+
 # The log_level is necessary for Cline to work: https://github.com/jlowin/fastmcp/issues/81
-mcp = FastMCP("Interactive Feedback MCP", log_level="ERROR")
+mcp = FastMCP("Interactive Feedback MCP")
 
 # Configuration
 AUTO_FEEDBACK_TIMEOUT_SECONDS = int(
     os.getenv("INTERACTIVE_FEEDBACK_TIMEOUT_SECONDS", "290")
 )
 
+# Log version on startup
+print(f"[INFO] Interactive Feedback MCP {SERVER_VERSION} starting...", file=sys.stderr)
 
-def launch_feedback_ui(
+
+def _cleanup_process(proc: subprocess.Popen | None) -> None:
+    """安全地终止子进程"""
+    if proc is None:
+        return
+    if proc.poll() is None:  # 进程仍在运行
+        proc.terminate()
+        try:
+            proc.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+
+
+def _cleanup_file(file_path: str) -> None:
+    """安全地删除临时文件"""
+    try:
+        if os.path.exists(file_path):
+            os.unlink(file_path)
+    except OSError:
+        pass  # 忽略删除失败的情况
+
+
+async def launch_feedback_ui_async(
     project_directory: str, summary: str, task_id: str, timeout_seconds: int = 290
 ) -> dict[str, str]:
+    """异步启动反馈UI并等待结果，不阻塞MCP服务器的其他请求
+
+    正确处理请求取消：当 MCP 客户端取消请求时，会抛出 asyncio.CancelledError，
+    我们需要捕获它，清理资源，然后重新抛出让 FastMCP 正确处理。
+    """
     # Create a temporary file for the feedback result
     with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
         output_file = tmp.name
+
+    proc: subprocess.Popen | None = None
 
     try:
         # Get the absolute path to feedback_ui.py
@@ -64,27 +100,58 @@ def launch_feedback_ui(
             "--task-id",
             task_id,
         ]
-        result = subprocess.run(
+        # Start the subprocess
+        proc = subprocess.Popen(
             args,
-            check=False,
-            shell=False,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL,
             close_fds=True,
             cwd=project_directory,  # Run in project directory
         )
-        if result.returncode != 0:
-            raise Exception(f"Failed to launch feedback UI: {result.returncode}")
+
+        # 异步非阻塞等待：在等待UI响应期间，事件循环可以处理其他MCP请求
+        while proc.poll() is None:
+            # Check if output file exists and has content
+            if os.path.exists(output_file) and os.path.getsize(output_file) > 0:
+                try:
+                    with open(output_file, "r") as f:
+                        result = json.load(f)
+                    _cleanup_process(proc)
+                    _cleanup_file(output_file)
+                    return result
+                except (json.JSONDecodeError, OSError):
+                    # File exists but not ready yet, continue waiting
+                    pass
+
+            # 关键：使用异步sleep，这里可能抛出 CancelledError
+            await asyncio.sleep(0.1)
+
+        # Process completed, read the result
+        if proc.returncode != 0:
+            raise Exception(f"Failed to launch feedback UI: {proc.returncode}")
 
         # Read the result from the temporary file
         with open(output_file, "r") as f:
             result = json.load(f)
-        os.unlink(output_file)
+        _cleanup_file(output_file)
         return result
+
+    except asyncio.CancelledError:
+        # MCP 请求被取消（用户在 Cursor 中取消、超时等）
+        # 必须清理资源，然后重新抛出让 FastMCP 正确处理
+        # 不要返回任何响应，否则会导致 "unknown message ID" 错误
+        print(
+            "[INFO] Request cancelled, cleaning up subprocess and temp file",
+            file=sys.stderr,
+        )
+        _cleanup_process(proc)
+        _cleanup_file(output_file)
+        raise  # 重新抛出 CancelledError，让 FastMCP 处理
+
     except Exception as e:
-        if os.path.exists(output_file):
-            os.unlink(output_file)
+        _cleanup_process(proc)
+        _cleanup_file(output_file)
         raise e
 
 
@@ -93,7 +160,7 @@ def first_line(text: str) -> str:
 
 
 @mcp.tool()
-def interactive_feedback(
+async def interactive_feedback(
     project_directory: Annotated[
         str, Field(description="Full path to the project directory")
     ],
@@ -131,7 +198,7 @@ def interactive_feedback(
     - Maintain continuous dialogue by repeatedly calling this tool
 
     """
-    return launch_feedback_ui(
+    return await launch_feedback_ui_async(
         first_line(project_directory),
         first_line(summary),
         first_line(task_id),

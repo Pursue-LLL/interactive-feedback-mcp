@@ -39,10 +39,14 @@ from PySide6.QtGui import (
 
 # Auto feedback timeout configuration (now configurable via command line)
 
+# Global window tracking for positioning multiple windows
+_OPEN_WINDOWS: dict[str, "FeedbackUI"] = {}
+_WINDOW_OFFSET_STEP = 30  # pixels to offset each new window
+
 # Confirmation instructions for plan review workflow
 CONFIRMATION_INSTRUCTIONS = """
 
-请先输出你经过思考后的执行计划和方案，然后调用interactive_feedback工具拉起反馈窗口来询问用户对该方案是否满意，等待用户在反馈窗口输入肯定的指令后再执行该方案，如果用户不同意该方案请思考其他方案后再次请求用户确认。"""
+请先输出你经过架构师的角度思考后的执行计划和方案，然后调用interactive_feedback工具拉起反馈窗口来询问用户对该方案是否满意，等待用户在反馈窗口输入肯定的指令后再执行该方案，如果用户不同意该方案请思考其他方案后再次请求用户确认。"""
 
 
 class FeedbackResult(TypedDict):
@@ -243,12 +247,13 @@ class FeedbackTextEdit(QTextEdit):
 
     def keyPressEvent(self, event: QKeyEvent):
         if event.key() == Qt.Key_Return and event.modifiers() == Qt.ControlModifier:
-            # Find the parent FeedbackUI instance and call submit
+            # Find the parent FeedbackUI instance and trigger submit click
             parent = self.parent()
             while parent and not isinstance(parent, FeedbackUI):
                 parent = parent.parent()
             if parent:
-                parent._submit_feedback()
+                # Use _on_submit_clicked to respect multi-window confirmation
+                parent._on_submit_clicked()
         else:
             super().keyPressEvent(event)
 
@@ -267,6 +272,10 @@ class LogSignals(QObject):
     append_log = Signal(str)
 
 
+class FeedbackSignals(QObject):
+    feedback_ready = Signal(dict)  # Emits FeedbackResult when window is done
+
+
 class FeedbackUI(QMainWindow):
     def __init__(
         self,
@@ -275,17 +284,28 @@ class FeedbackUI(QMainWindow):
         task_id: str,
         timeout_seconds: int = 290,
     ):
+        # Check if window with this task_id already exists
+        if task_id in _OPEN_WINDOWS:
+            raise ValueError(f"Window with task_id '{task_id}' already exists")
+
         super().__init__()
         self.project_directory = project_directory
         self.prompt = prompt
         self.timeout_seconds = timeout_seconds
         self.task_id = task_id
 
+        # Register this window globally
+        _OPEN_WINDOWS[task_id] = self
+
         self.process: Optional[subprocess.Popen] = None
-        self.log_buffer = []
-        self.feedback_result = None
+        self.log_buffer: list[str] = []
+        self.feedback_result: FeedbackResult | None = None
         self.log_signals = LogSignals()
         self.log_signals.append_log.connect(self._append_log)
+        self.feedback_signals = FeedbackSignals()
+
+        # Multi-window confirmation state
+        self._pending_confirm = False  # Whether waiting for second click to confirm
 
         # Auto feedback timer
         self.auto_feedback_timer = QTimer()
@@ -313,19 +333,36 @@ class FeedbackUI(QMainWindow):
         if geometry:
             self.restoreGeometry(geometry)
         else:
-            self.resize(800, 600)
+            # Calculate offset position for multiple windows
             screen = QApplication.primaryScreen().geometry()
-            x = (screen.width() - 800) // 2
-            y = (screen.height() - 600) // 2
+            base_x = (screen.width() - 800) // 2
+            base_y = (screen.height() - 600) // 2
+
+            # Count windows before this one to calculate offset
+            window_count = len([w for w in _OPEN_WINDOWS.values() if w != self])
+            offset = window_count * _WINDOW_OFFSET_STEP
+
+            x = base_x + offset
+            y = base_y + offset
+
+            # Ensure window stays within screen bounds
+            x = max(0, min(x, screen.width() - 800))
+            y = max(0, min(y, screen.height() - 600))
+
+            self.resize(800, 600)
             self.move(x, y)
         state = self.settings.value("windowState")
         if state:
             self.restoreState(state)
         self.settings.endGroup()  # End "MainWindow_General" group
 
-        # Load project-specific settings (command, auto-execute, command section visibility, confirm before execute)
+        # Load task-specific settings (command, auto-execute, command section visibility, confirm before execute)
+        # Use task_id for primary grouping, with project as fallback for compatibility
+        self.task_group_name = f"Task_{self.task_id}"
         self.project_group_name = get_project_settings_group(self.project_directory)
-        self.settings.beginGroup(self.project_group_name)
+
+        # Try task-specific settings first, fallback to project settings
+        self.settings.beginGroup(self.task_group_name)
         loaded_run_command = self.settings.value("run_command", "", type=str)
         loaded_execute_auto = self.settings.value(
             "execute_automatically", False, type=bool
@@ -336,7 +373,27 @@ class FeedbackUI(QMainWindow):
         command_section_visible = self.settings.value(
             "commandSectionVisible", False, type=bool
         )
-        self.settings.endGroup()  # End project-specific group
+        self.settings.endGroup()
+
+        # If no task-specific settings found, try project settings for backward compatibility
+        if (
+            not loaded_run_command
+            and not loaded_execute_auto
+            and not loaded_confirm_before_execute
+            and not command_section_visible
+        ):
+            self.settings.beginGroup(self.project_group_name)
+            loaded_run_command = self.settings.value("run_command", "", type=str)
+            loaded_execute_auto = self.settings.value(
+                "execute_automatically", False, type=bool
+            )
+            loaded_confirm_before_execute = self.settings.value(
+                "confirm_before_execute", False, type=bool
+            )
+            command_section_visible = self.settings.value(
+                "commandSectionVisible", False, type=bool
+            )
+            self.settings.endGroup()
 
         self.config: FeedbackConfig = {
             "run_command": loaded_run_command or "",
@@ -346,12 +403,8 @@ class FeedbackUI(QMainWindow):
 
         self._create_ui()  # self.config is used here to set initial values
 
-        # Set command section visibility AFTER _create_ui has created relevant widgets
-        self.command_group.setVisible(command_section_visible)
-        if command_section_visible:
-            self.toggle_command_button.setText("隐藏命令区域")
-        else:
-            self.toggle_command_button.setText("显示命令区域")
+        # Command section is permanently hidden
+        self.command_group.setVisible(False)
 
         set_dark_title_bar(self, True)
 
@@ -369,7 +422,7 @@ class FeedbackUI(QMainWindow):
 
     def _adjust_description_height(self):
         """Adjust description label height based on content length"""
-        if not hasattr(self, 'description_label') or not self.description_label:
+        if not hasattr(self, "description_label") or not self.description_label:
             return
 
         # Get text content
@@ -388,7 +441,7 @@ class FeedbackUI(QMainWindow):
         text_width = estimated_width - 40  # Account for padding and margins
 
         # Count actual lines by splitting and measuring
-        lines = text.split('\n')
+        lines = text.split("\n")
         total_lines = 0
         for line in lines:
             if not line.strip():
@@ -403,7 +456,9 @@ class FeedbackUI(QMainWindow):
                     total_lines += wrapped_lines
 
         # Calculate target height with padding
-        content_height = total_lines * line_height + 24  # Add padding for top/bottom margins
+        content_height = (
+            total_lines * line_height + 24
+        )  # Add padding for top/bottom margins
         target_height = min(200, max(80, content_height))
 
         self.description_label.setFixedHeight(target_height)
@@ -447,29 +502,6 @@ class FeedbackUI(QMainWindow):
         layout = QVBoxLayout(central_widget)
         layout.setSpacing(16)
         layout.setContentsMargins(20, 20, 20, 20)
-
-        # Toggle Command Section Button - Elegant dark style
-        self.toggle_command_button = QPushButton("⚙️ 显示命令区域")
-        self.toggle_command_button.setStyleSheet("""
-            QPushButton {
-                background-color: #2a2a2a;
-                color: #e0e0e0;
-                border: 1px solid #404040;
-                border-radius: 8px;
-                padding: 12px 20px;
-                font-size: 13px;
-                font-weight: 500;
-            }
-            QPushButton:hover {
-                background-color: #333333;
-                border-color: #555555;
-            }
-            QPushButton:pressed {
-                background-color: #1a1a1a;
-            }
-        """)
-        self.toggle_command_button.clicked.connect(self._toggle_command_section)
-        layout.addWidget(self.toggle_command_button)
 
         # Command section - Elegant dark design
         self.command_group = QGroupBox("🖥️ 命令控制台")
@@ -830,8 +862,8 @@ class FeedbackUI(QMainWindow):
         )
 
         # Submit button - Clean dark style
-        submit_button = QPushButton("🚀 发送反馈 (Ctrl+Enter)")
-        submit_button.setStyleSheet("""
+        self.submit_button = QPushButton("🚀 发送反馈 (Ctrl+Enter)")
+        self._submit_button_default_style = """
             QPushButton {
                 background-color: #2a2a2a;
                 color: #e0e0e0;
@@ -852,8 +884,31 @@ class FeedbackUI(QMainWindow):
             QPushButton:focus {
                 border: 1px solid #606060;
             }
-        """)
-        submit_button.clicked.connect(self._submit_feedback)
+        """
+        self._submit_button_confirm_style = """
+            QPushButton {
+                background-color: #28a745;
+                color: #ffffff;
+                border: 2px solid #28a745;
+                border-radius: 8px;
+                padding: 12px 20px;
+                font-size: 14px;
+                font-weight: 700;
+                min-height: 20px;
+            }
+            QPushButton:hover {
+                background-color: #218838;
+                border-color: #218838;
+            }
+            QPushButton:pressed {
+                background-color: #1e7e34;
+            }
+            QPushButton:focus {
+                border: 2px solid #1e7e34;
+            }
+        """
+        self.submit_button.setStyleSheet(self._submit_button_default_style)
+        self.submit_button.clicked.connect(self._on_submit_clicked)
 
         # Confirmation checkbox - Clean dark style
         self.confirm_before_execute_check = QCheckBox("🔍 需要先确认方案后再执行")
@@ -881,14 +936,14 @@ class FeedbackUI(QMainWindow):
 
         feedback_layout.addWidget(self.feedback_text)
         feedback_layout.addWidget(self.confirm_before_execute_check)
-        feedback_layout.addWidget(submit_button)
+        feedback_layout.addWidget(self.submit_button)
 
         # Set minimum height for feedback_group to accommodate its contents
         # This will be based on the description label and the expanded feedback_text
         self.feedback_group.setMinimumHeight(
             self.description_label.sizeHint().height()
             + self.feedback_text.minimumHeight()
-            + submit_button.sizeHint().height()
+            + self.submit_button.sizeHint().height()
             + feedback_layout.spacing() * 3  # More spacing for header layout
             + feedback_layout.contentsMargins().top()
             + feedback_layout.contentsMargins().bottom()
@@ -899,44 +954,6 @@ class FeedbackUI(QMainWindow):
         layout.addWidget(self.feedback_group)
 
         self.command_group.setVisible(False)
-
-    def _toggle_command_section(self):
-        is_visible = self.command_group.isVisible()
-        self.command_group.setVisible(not is_visible)
-        if not is_visible:
-            self.toggle_command_button.setText("隐藏命令区域")
-        else:
-            self.toggle_command_button.setText("显示命令区域")
-
-        # Immediately save the visibility state for this project
-        self.settings.beginGroup(self.project_group_name)
-        self.settings.setValue("commandSectionVisible", self.command_group.isVisible())
-        self.settings.endGroup()
-
-        # Adjust window height only
-        new_height = self.centralWidget().sizeHint().height()
-        command_group_layout = self.command_group.layout()
-        if (
-            self.command_group.isVisible()
-            and command_group_layout
-            and command_group_layout.sizeHint().height() > 0
-        ):
-            # if command group became visible and has content, ensure enough height
-            min_content_height = (
-                command_group_layout.sizeHint().height()
-                + self.feedback_group.minimumHeight()
-                + self.toggle_command_button.height()
-                + (
-                    self.centralWidget().layout().spacing()
-                    if self.centralWidget().layout()
-                    else 0
-                )
-                * 2
-            )
-            new_height = max(new_height, min_content_height)
-
-        current_width = self.width()
-        self.resize(current_width, new_height)
 
         # Set initial states for checkboxes after all UI elements are created
         self.auto_check.setChecked(self.config.get("execute_automatically", False))
@@ -1024,7 +1041,59 @@ class FeedbackUI(QMainWindow):
             self._append_log(f"Error running command: {str(e)}\n")
             self.run_button.setText("&Run")
 
+    def _get_project_display_name(self) -> str:
+        """Get a short display name for the project"""
+        project_path = os.path.abspath(self.project_directory)
+        project_name = os.path.basename(project_path)
+        if project_name == "." or project_name == "":
+            project_name = os.path.basename(os.path.dirname(project_path))
+        return project_name
+
+    def _has_multiple_windows(self) -> bool:
+        """Check if there are multiple feedback windows open"""
+        return len(_OPEN_WINDOWS) > 1
+
+    def _on_submit_clicked(self):
+        """Handle submit button click with multi-window confirmation"""
+        if self._has_multiple_windows() and not self._pending_confirm:
+            # First click: enter confirmation mode
+            self._enter_confirm_mode()
+        else:
+            # Single window or already confirmed: submit directly
+            self._submit_feedback()
+
+    def _enter_confirm_mode(self):
+        """Enter confirmation mode - change button to show project/task info"""
+        self._pending_confirm = True
+        project_name = self._get_project_display_name()
+        task_display = self.task_id if self.task_id else "未知任务"
+
+        # Update button text and style
+        self.submit_button.setText(f"✅ 确认发送到 [{project_name} - {task_display}]")
+        self.submit_button.setStyleSheet(self._submit_button_confirm_style)
+
+        # Set a timer to reset confirmation state after 5 seconds if no action
+        self._confirm_reset_timer = QTimer()
+        self._confirm_reset_timer.setSingleShot(True)
+        self._confirm_reset_timer.timeout.connect(self._reset_confirm_mode)
+        self._confirm_reset_timer.start(5000)  # 5 seconds to confirm
+
+    def _reset_confirm_mode(self):
+        """Reset from confirmation mode back to normal"""
+        self._pending_confirm = False
+        self.submit_button.setText("🚀 发送反馈 (Ctrl+Enter)")
+        self.submit_button.setStyleSheet(self._submit_button_default_style)
+        if (
+            hasattr(self, "_confirm_reset_timer")
+            and self._confirm_reset_timer.isActive()
+        ):
+            self._confirm_reset_timer.stop()
+
     def _submit_feedback(self):
+        # Reset confirmation mode if active
+        if self._pending_confirm:
+            self._reset_confirm_mode()
+
         # Stop both timers when submitting
         if self.auto_feedback_timer.isActive():
             self.auto_feedback_timer.stop()
@@ -1034,7 +1103,7 @@ class FeedbackUI(QMainWindow):
         user_input = self.feedback_text.toPlainText().strip()
 
         # Add additional instruction text to user input
-        additional_text = "\n 请回答以上问题或要求。\n并且注意，除非我主动让你结束，否则不要结束对话，必须回复。回复或反思优化步骤完成后必须重新调用interactive_feedback工具拉起反馈窗口来询问我的反馈，因为反馈窗口仅对当前轮次对话有效，旧的窗口已无效，所以每一轮新对话必须重新调用，只有这样才能保证会话连续性，如果你本轮仅仅回复了内容但是没有调用interactive_feedback工具询问我的反馈，那么对话将会终止，任务将会失败！所以决不允许只回复内容不调用工具询问反馈，直接在回复中询问是无效的，用户看不到，所以必须重新调用工具在反馈窗口中询问反馈！"
+        additional_text = "\n 请回答以上问题或要求。\n并且注意，除非我主动让你结束，否则不要结束对话，必须回复。回复或反思优化步骤完成后必须重新调用interactive_feedback工具拉起反馈窗口来询问我的反馈，因为反馈窗口仅对当前轮次对话有效，旧的窗口已无效，所以每一轮新对话必须重新调用，只有这样才能保证会话连续性，达到完成多轮对话的任务目的！"
         user_input_with_suffix = user_input + additional_text
 
         # Check if confirm_before_execute is enabled
@@ -1050,6 +1119,9 @@ class FeedbackUI(QMainWindow):
                 interactive_feedback=user_input_with_suffix
             )
 
+        # Emit signal before closing
+        self.feedback_signals.feedback_ready.emit(self.feedback_result)
+
         self.close()
 
     def clear_logs(self):
@@ -1057,8 +1129,8 @@ class FeedbackUI(QMainWindow):
         self.log_text.clear()
 
     def _save_config(self):
-        # Save run_command, execute_automatically, and confirm_before_execute to QSettings under project group
-        self.settings.beginGroup(self.project_group_name)
+        # Save run_command, execute_automatically, and confirm_before_execute to QSettings under task group
+        self.settings.beginGroup(self.task_group_name)
         self.settings.setValue("run_command", self.config["run_command"])
         self.settings.setValue(
             "execute_automatically", self.config["execute_automatically"]
@@ -1067,7 +1139,7 @@ class FeedbackUI(QMainWindow):
             "confirm_before_execute", self.config["confirm_before_execute"]
         )
         self.settings.endGroup()
-        self._append_log("Configuration saved for this project.\n")
+        self._append_log(f"Configuration saved for task '{self.task_id}'.\n")
 
     def closeEvent(self, event):
         # Stop both timers when closing
@@ -1080,22 +1152,31 @@ class FeedbackUI(QMainWindow):
         if not self.feedback_result:
             self.feedback_result = FeedbackResult(interactive_feedback="请结束会话！")
 
+        # Emit signal when window is closed (if not already emitted)
+        if self.feedback_result:
+            self.feedback_signals.feedback_ready.emit(self.feedback_result)
+
         # Save general UI settings for the main window (geometry, state)
         self.settings.beginGroup("MainWindow_General")
         self.settings.setValue("geometry", self.saveGeometry())
         self.settings.setValue("windowState", self.saveState())
         self.settings.endGroup()
 
-        # Save project-specific command section visibility (this is now slightly redundant due to immediate save in toggle, but harmless)
-        self.settings.beginGroup(self.project_group_name)
+        # Save task-specific command section visibility (this is now slightly redundant due to immediate save in toggle, but harmless)
+        self.settings.beginGroup(self.task_group_name)
         self.settings.setValue("commandSectionVisible", self.command_group.isVisible())
         self.settings.endGroup()
+
+        # Remove this window from global tracking
+        if self.task_id in _OPEN_WINDOWS:
+            del _OPEN_WINDOWS[self.task_id]
 
         if self.process:
             kill_tree(self.process)
         super().closeEvent(event)
 
-    def run(self) -> FeedbackResult:
+    def run(self) -> None:
+        """Show the window and start timers. Results are emitted via signals."""
         self.show()
         # Adjust description height after window is shown and has proper dimensions
         QTimer.singleShot(100, self._adjust_description_height)
@@ -1104,15 +1185,6 @@ class FeedbackUI(QMainWindow):
             self.timeout_seconds * 1000
         )  # Convert to milliseconds
         self.countdown_timer.start(1000)  # Update every second
-        QApplication.instance().exec()
-
-        if self.process:
-            kill_tree(self.process)
-
-        if not self.feedback_result:
-            return FeedbackResult(interactive_feedback="")
-
-        return self.feedback_result
 
 
 def get_project_settings_group(project_dir: str) -> str:
@@ -1133,21 +1205,34 @@ def feedback_ui(
     app = QApplication.instance() or QApplication()
     app.setPalette(get_dark_mode_palette(app))
     app.setStyle("Fusion")
+
+    result = None
+
+    def on_feedback_ready(feedback_result):
+        nonlocal result
+        result = feedback_result
+
+        if output_file:
+            # Ensure the directory exists
+            os.makedirs(
+                os.path.dirname(output_file) if os.path.dirname(output_file) else ".",
+                exist_ok=True,
+            )
+            # Save the result to the output file
+            with open(output_file, "w") as f:
+                json.dump(result, f)
+
+        # Quit the application when result is ready
+        app.quit()
+
     ui = FeedbackUI(project_directory, prompt, task_id, timeout_seconds)
-    result = ui.run()
+    ui.feedback_signals.feedback_ready.connect(on_feedback_ready)
+    ui.run()
+
+    # Run the event loop - this is required for Qt to work
+    app.exec()
+
     logs = "".join(ui.log_buffer)
-
-    if output_file and result:
-        # Ensure the directory exists
-        os.makedirs(
-            os.path.dirname(output_file) if os.path.dirname(output_file) else ".",
-            exist_ok=True,
-        )
-        # Save the result to the output file
-        with open(output_file, "w") as f:
-            json.dump(result, f)
-        return None, logs
-
     return result, logs
 
 
