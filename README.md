@@ -14,11 +14,19 @@ fork 自 https://github.com/noopstudios/interactive-feedback-mcp.git
 
 ![优化后的界面示例](images/ex.png)
 
-*界面包含项目名称、任务标识符（蓝色标签）、深色主题设计和自动格式清除功能*
+*界面包含项目名称、任务标识符（蓝色标签）、深色主题设计、输入框粘贴格式自动清除，以及图片添加/预览区域*
+
+## 图片支持说明
+
+反馈窗口支持附带图片一起提交给AI：
+
+1. **添加方式**：支持粘贴图片、拖拽图片到窗口，或点击“添加图片”选择本地图片文件
+2. **支持格式**：png / jpg / jpeg / gif / webp / bmp（以实际系统文件选择器与识别结果为准）
+3. **传输方式**：图片会作为`interactive_feedback`工具结果的一部分随同文本一起返回；若当前客户端/模型不支持图片输入，图片可能会被忽略，仅保留文本
 
 ## 📖 项目简介
 
-这是一个[MCP Server](https://modelcontextprotocol.io/)，用于在AI辅助开发工具中实现人机交互工作流，如[Cursor](https://www.cursor.com)。该服务器允许您运行命令、查看输出，并直接向AI提供文本反馈。也兼容[Cline](https://cline.bot)和[Windsurf](https://windsurf.com)。
+这是一个[MCP Server](https://modelcontextprotocol.io/)，用于在AI辅助开发工具中实现人机交互工作流，如[Cursor](https://www.cursor.com)。该服务器允许您运行命令、查看输出，并直接向AI提供文本反馈。也兼容[Cline](https://cline.bot)，但**不支持**[Windsurf](https://windsurf.com)。
 
 ## 💡 为什么使用这个工具？
 
@@ -71,9 +79,11 @@ fork 自 https://github.com/noopstudios/interactive-feedback-mcp.git
         }
         ```
 
-### 对于 Cline / Windsurf
+### 对于 Cline
 
 类似设置原则适用。您可以在相应工具的MCP设置中配置服务器命令（例如使用正确`--directory`参数指向项目目录的`uv run server.py`），使用`interactive-feedback-mcp`作为服务器标识符。
+
+**注意**：当前不支持 Windsurf。
 
 ## 配置
 
