@@ -4,12 +4,14 @@
 import os
 import sys
 import json
+import base64
 import psutil
 import argparse
 import subprocess
 import threading
 import hashlib
-from typing import Optional, TypedDict
+import mimetypes
+from typing import Optional, TypedDict, NotRequired
 
 from PySide6.QtWidgets import (
     QApplication,
@@ -23,10 +25,13 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QTextEdit,
     QPlainTextEdit,
+    QFileDialog,
     QGroupBox,
+    QListWidget,
+    QListWidgetItem,
     QSizePolicy,
 )
-from PySide6.QtCore import Qt, Signal, QObject, QTimer, QSettings
+from PySide6.QtCore import Qt, Signal, QObject, QTimer, QSettings, QByteArray, QBuffer, QIODevice, QSize
 from PySide6.QtGui import (
     QTextCursor,
     QIcon,
@@ -35,6 +40,8 @@ from PySide6.QtGui import (
     QFontDatabase,
     QPalette,
     QColor,
+    QImage,
+    QPixmap,
 )
 
 # Auto feedback timeout configuration (now configurable via command line)
@@ -49,8 +56,18 @@ CONFIRMATION_INSTRUCTIONS = """
 请先输出你经过架构师的角度思考后的执行计划和方案，然后调用interactive_feedback工具拉起反馈窗口来询问用户对该方案是否满意，等待用户在反馈窗口输入肯定的指令后再执行该方案，如果用户不同意该方案请思考其他方案后再次请求用户确认。"""
 
 
+class ImageAttachment(TypedDict):
+    name: str
+    mime_type: str
+    data: str  # base64
+    size_bytes: int
+    width: int
+    height: int
+
+
 class FeedbackResult(TypedDict):
     interactive_feedback: str
+    images: NotRequired[list[ImageAttachment]]
 
 
 class FeedbackConfig(TypedDict):
@@ -245,19 +262,42 @@ class FeedbackTextEdit(QTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+    def _get_feedback_ui_parent(self) -> Optional["FeedbackUI"]:
+        parent = self.parent()
+        while parent and not isinstance(parent, FeedbackUI):
+            parent = parent.parent()
+        return parent
+
     def keyPressEvent(self, event: QKeyEvent):
         if event.key() == Qt.Key_Return and event.modifiers() == Qt.ControlModifier:
             # Find the parent FeedbackUI instance and trigger submit click
-            parent = self.parent()
-            while parent and not isinstance(parent, FeedbackUI):
-                parent = parent.parent()
-            if parent:
+            parent = self._get_feedback_ui_parent()
+            if parent is not None:
                 # Use _on_submit_clicked to respect multi-window confirmation
                 parent._on_submit_clicked()
         else:
             super().keyPressEvent(event)
 
     def insertFromMimeData(self, source):
+        parent = self._get_feedback_ui_parent()
+        if parent is not None:
+            if source.hasImage():
+                image = source.imageData()
+                if isinstance(image, QImage):
+                    parent._add_image_from_qimage(image)
+                    return
+                if hasattr(image, "toImage"):
+                    parent._add_image_from_qimage(image.toImage())
+                    return
+
+            if source.hasUrls():
+                local_paths: list[str] = []
+                for url in source.urls():
+                    if url.isLocalFile():
+                        local_paths.append(url.toLocalFile())
+                if parent._add_images_from_paths(local_paths):
+                    return
+
         # Override to strip formatting when pasting
         if source.hasText():
             # Insert only plain text, stripping all formatting
@@ -326,6 +366,8 @@ class FeedbackUI(QMainWindow):
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
 
         self.settings = QSettings("InteractiveFeedbackMCP", "InteractiveFeedbackMCP")
+        self._images: list[ImageAttachment] = []
+        self.setAcceptDrops(True)
 
         # Load general UI settings for the main window (geometry, state)
         self.settings.beginGroup("MainWindow_General")
@@ -861,6 +903,142 @@ class FeedbackUI(QMainWindow):
             "请在此输入您的反馈和指示... (按 Ctrl+Enter 发送)"
         )
 
+        # Images section
+        images_container = QWidget()
+        images_layout = QVBoxLayout(images_container)
+        images_layout.setContentsMargins(0, 0, 0, 0)
+        images_layout.setSpacing(8)
+
+        images_toolbar = QHBoxLayout()
+        images_toolbar.setContentsMargins(0, 0, 0, 0)
+
+        self.add_images_button = QPushButton("添加图片")
+        self.add_images_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2a2a2a;
+                color: #e0e0e0;
+                border: 1px solid #404040;
+                border-radius: 6px;
+                padding: 6px 10px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background-color: #333333;
+                border-color: #555555;
+            }
+            QPushButton:pressed {
+                background-color: #1a1a1a;
+            }
+        """)
+        self.add_images_button.clicked.connect(self._select_images)
+
+        self.remove_images_button = QPushButton("移除选中")
+        self.remove_images_button.setEnabled(False)
+        self.remove_images_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2a2a2a;
+                color: #e0e0e0;
+                border: 1px solid #404040;
+                border-radius: 6px;
+                padding: 6px 10px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background-color: #333333;
+                border-color: #555555;
+            }
+            QPushButton:pressed {
+                background-color: #1a1a1a;
+            }
+            QPushButton:disabled {
+                color: #808080;
+                border-color: #333333;
+            }
+        """)
+        self.remove_images_button.clicked.connect(self._remove_selected_images)
+
+        self.clear_images_button = QPushButton("清空")
+        self.clear_images_button.setEnabled(False)
+        self.clear_images_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2a2a2a;
+                color: #e0e0e0;
+                border: 1px solid #404040;
+                border-radius: 6px;
+                padding: 6px 10px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background-color: #333333;
+                border-color: #555555;
+            }
+            QPushButton:pressed {
+                background-color: #1a1a1a;
+            }
+            QPushButton:disabled {
+                color: #808080;
+                border-color: #333333;
+            }
+        """)
+        self.clear_images_button.clicked.connect(self._clear_images)
+
+        self.images_status_label = QLabel("0 张图片")
+        self.images_status_label.setStyleSheet("""
+            QLabel {
+                color: #a0a0a0;
+                font-size: 12px;
+                padding: 2px 6px;
+                background-color: #404040;
+                border-radius: 4px;
+            }
+        """)
+
+        images_toolbar.addWidget(self.add_images_button)
+        images_toolbar.addWidget(self.remove_images_button)
+        images_toolbar.addWidget(self.clear_images_button)
+        images_toolbar.addStretch()
+        images_toolbar.addWidget(self.images_status_label)
+        images_layout.addLayout(images_toolbar)
+
+        self.images_hint_label = QLabel("可在此粘贴/拖拽图片，或点击“添加图片”选择文件。")
+        self.images_hint_label.setStyleSheet("""
+            QLabel {
+                color: #808080;
+                font-size: 12px;
+                padding: 6px 8px;
+                border: 1px dashed #404040;
+                border-radius: 8px;
+            }
+        """)
+        images_layout.addWidget(self.images_hint_label)
+
+        self.images_list = QListWidget()
+        self.images_list.setIconSize(QSize(64, 64))
+        self.images_list.setVisible(False)
+        self.images_list.setStyleSheet("""
+            QListWidget {
+                background-color: #252525;
+                color: #e0e0e0;
+                border: 1px solid #404040;
+                border-radius: 8px;
+                padding: 6px;
+                font-size: 12px;
+            }
+            QListWidget::item {
+                padding: 6px 8px;
+                border-radius: 6px;
+            }
+            QListWidget::item:selected {
+                background-color: #404040;
+            }
+        """)
+        self.images_list.setMinimumHeight(120)
+        self.images_list.setMaximumHeight(180)
+        images_layout.addWidget(self.images_list)
+
         # Submit button - Clean dark style
         self.submit_button = QPushButton("🚀 发送反馈 (Ctrl+Enter)")
         self._submit_button_default_style = """
@@ -935,6 +1113,7 @@ class FeedbackUI(QMainWindow):
         """)
 
         feedback_layout.addWidget(self.feedback_text)
+        feedback_layout.addWidget(images_container)
         feedback_layout.addWidget(self.confirm_before_execute_check)
         feedback_layout.addWidget(self.submit_button)
 
@@ -1119,6 +1298,9 @@ class FeedbackUI(QMainWindow):
                 interactive_feedback=user_input_with_suffix
             )
 
+        if self._images:
+            self.feedback_result["images"] = list(self._images)
+
         # Emit signal before closing
         self.feedback_signals.feedback_ready.emit(self.feedback_result)
 
@@ -1174,6 +1356,178 @@ class FeedbackUI(QMainWindow):
         if self.process:
             kill_tree(self.process)
         super().closeEvent(event)
+
+    def dragEnterEvent(self, event):
+        mime = event.mimeData()
+        if mime.hasImage():
+            event.acceptProposedAction()
+            return
+        if mime.hasUrls():
+            for url in mime.urls():
+                if url.isLocalFile():
+                    path = url.toLocalFile()
+                    mime_type, _ = mimetypes.guess_type(path)
+                    if mime_type and mime_type.startswith("image/"):
+                        event.acceptProposedAction()
+                        return
+        event.ignore()
+
+    def dropEvent(self, event):
+        mime = event.mimeData()
+        handled = False
+
+        if mime.hasImage():
+            image = mime.imageData()
+            if isinstance(image, QImage):
+                self._add_image_from_qimage(image)
+                handled = True
+            elif hasattr(image, "toImage"):
+                self._add_image_from_qimage(image.toImage())
+                handled = True
+
+        if mime.hasUrls():
+            local_paths: list[str] = []
+            for url in mime.urls():
+                if url.isLocalFile():
+                    local_paths.append(url.toLocalFile())
+            if self._add_images_from_paths(local_paths):
+                handled = True
+
+        if handled:
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def _format_bytes(self, value: int) -> str:
+        size = float(value)
+        for unit in ("B", "KB", "MB", "GB"):
+            if size < 1024 or unit == "GB":
+                return f"{size:.0f}{unit}" if unit == "B" else f"{size:.1f}{unit}"
+            size /= 1024
+        return f"{value}B"
+
+    def _refresh_images_ui(self) -> None:
+        count = len(self._images)
+        self.images_status_label.setText(f"{count} 张图片")
+
+        self.images_list.clear()
+        has_images = count > 0
+        self.images_list.setVisible(has_images)
+        self.images_hint_label.setVisible(not has_images)
+        self.clear_images_button.setEnabled(has_images)
+        self.remove_images_button.setEnabled(has_images)
+
+        if not has_images:
+            return
+
+        for img in self._images:
+            try:
+                raw = base64.b64decode(img["data"])
+                pixmap = QPixmap()
+                pixmap.loadFromData(raw)
+                icon_pixmap = pixmap.scaled(
+                    64,
+                    64,
+                    Qt.KeepAspectRatio,
+                    Qt.SmoothTransformation,
+                )
+                text = f"{img['name']} ({self._format_bytes(img['size_bytes'])})"
+                item = QListWidgetItem(QIcon(icon_pixmap), text)
+                self.images_list.addItem(item)
+            except Exception:
+                text = f"{img['name']} ({self._format_bytes(img['size_bytes'])})"
+                self.images_list.addItem(QListWidgetItem(text))
+
+    def _qimage_to_png_bytes(self, image: QImage) -> bytes:
+        byte_array = QByteArray()
+        buffer = QBuffer(byte_array)
+        buffer.open(QIODevice.WriteOnly)
+        image.save(buffer, "PNG")
+        buffer.close()
+        return bytes(byte_array)
+
+    def _add_image_from_qimage(self, image: QImage) -> bool:
+        if image.isNull():
+            return False
+
+        image_bytes = self._qimage_to_png_bytes(image)
+        if not image_bytes:
+            return False
+
+        name = f"pasted-image-{len(self._images) + 1}.png"
+        attachment: ImageAttachment = {
+            "name": name,
+            "mime_type": "image/png",
+            "data": base64.b64encode(image_bytes).decode("utf-8"),
+            "size_bytes": len(image_bytes),
+            "width": image.width(),
+            "height": image.height(),
+        }
+        self._images.append(attachment)
+        self._refresh_images_ui()
+        return True
+
+    def _add_images_from_paths(self, paths: list[str]) -> bool:
+        added = False
+        for path in paths:
+            try:
+                if not path or not os.path.isfile(path):
+                    continue
+
+                mime_type, _ = mimetypes.guess_type(path)
+                if not mime_type or not mime_type.startswith("image/"):
+                    continue
+
+                with open(path, "rb") as f:
+                    image_bytes = f.read()
+
+                if not image_bytes:
+                    continue
+
+                qimage = QImage.fromData(image_bytes)
+                width = qimage.width() if not qimage.isNull() else 0
+                height = qimage.height() if not qimage.isNull() else 0
+
+                attachment: ImageAttachment = {
+                    "name": os.path.basename(path),
+                    "mime_type": mime_type,
+                    "data": base64.b64encode(image_bytes).decode("utf-8"),
+                    "size_bytes": len(image_bytes),
+                    "width": width,
+                    "height": height,
+                }
+                self._images.append(attachment)
+                added = True
+            except Exception as e:
+                self._append_log(f"Failed to add image: {path}: {e}\n")
+
+        if added:
+            self._refresh_images_ui()
+        return added
+
+    def _select_images(self) -> None:
+        file_paths, _ = QFileDialog.getOpenFileNames(
+            self,
+            "选择图片",
+            self.project_directory,
+            "图片 (*.png *.jpg *.jpeg *.gif *.webp *.bmp);;所有文件 (*)",
+        )
+        if not file_paths:
+            return
+        self._add_images_from_paths(file_paths)
+
+    def _remove_selected_images(self) -> None:
+        rows = sorted({i.row() for i in self.images_list.selectedIndexes()}, reverse=True)
+        if not rows:
+            return
+        for row in rows:
+            if 0 <= row < len(self._images):
+                del self._images[row]
+        self._refresh_images_ui()
+
+    def _clear_images(self) -> None:
+        self._images = []
+        self._refresh_images_ui()
 
     def run(self) -> None:
         """Show the window and start timers. Results are emitted via signals."""
